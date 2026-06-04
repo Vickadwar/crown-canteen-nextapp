@@ -72,7 +72,7 @@ const menuGroups: {
   {
     title: "Backend",
     items: [
-      { icon: ExternalLink, label: "ERPNext Backend", href: "/desk", target: "_blank" },
+      { icon: ExternalLink, label: "ERP Login", href: "/desk", target: "_blank" },
     ],
   },
 ];
