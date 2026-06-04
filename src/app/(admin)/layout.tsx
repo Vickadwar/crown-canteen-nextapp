@@ -32,8 +32,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
+// ── Menu groups (note the ERPNext Backend now goes to /desk) ──────────
 const menuGroups: {
   title: string;
   items: {
@@ -73,7 +72,7 @@ const menuGroups: {
   {
     title: "Backend",
     items: [
-      { icon: ExternalLink, label: "ERPNext Backend", href: "/erp", target: "_blank" },
+      { icon: ExternalLink, label: "ERPNext Backend", href: "/desk", target: "_blank" },
     ],
   },
 ];
@@ -85,8 +84,7 @@ const notifications = [
   { id: 4, title: "Biometric Sync",    desc: "All terminals synced successfully.",         time: "2 hr ago",   type: "info",    icon: Activity },
 ];
 
-// ── Sidebar nav item ──────────────────────────────────────────────────────────
-
+// ── Sidebar nav item ──────────────────────────────────────────────────
 function NavItem({ icon: Icon, label, href, target, active }: {
   icon: any;
   label: string;
@@ -127,8 +125,7 @@ function NavItem({ icon: Icon, label, href, target, active }: {
   );
 }
 
-// ── Main layout ───────────────────────────────────────────────────────────────
-
+// ── Main layout ───────────────────────────────────────────────────────
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -141,41 +138,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
 
-  // Fetch logged-in user from ERPNext
+  // Check authentication on mount & route change
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("/erp/api/method/frappe.auth.get_logged_user", {
+        const res = await fetch("/api/method/frappe.auth.get_logged_user", {
           credentials: "include",
         });
         if (res.ok) {
           const data = await res.json();
-          setUserName(data.message); // e.g. "john.doe@example.com"
+          setUserName(data.message);
         } else {
-          // Not logged in – redirect to login
-          router.push("/login");
+          // Not authenticated – redirect to home (login page)
+          router.replace("/");
         }
       } catch {
-        // If the fetch fails, assume not authenticated
-        router.push("/login");
+        router.replace("/");
       }
     };
     fetchUser();
-  }, [router]);
+  }, [pathname, router]);
 
   // Logout handler
   const handleLogout = useCallback(async () => {
     try {
-      await fetch("/erp/api/method/logout", {
+      await fetch("/api/method/logout", {
         method: "POST",
         credentials: "include",
       });
     } catch (err) {
-      // Even if logout fails, clear local state and redirect
+      // Even if logout fails, clear local state
     }
     setUserName(null);
-    router.push("/login");
-  }, [router]);
+    // Force a full page reload to / to clear any cached state
+    window.location.href = "/";
+  }, []);
 
   // Live clock
   useEffect(() => {
@@ -211,13 +208,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const time = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
   const date = now.toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short" });
 
-  // Page title derived from pathname
   const pageLabel = (() => {
     const seg = pathname.split("/").filter(Boolean).pop() ?? "overview";
     return seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
   })();
 
-  // User initials from name
   const userInitials = userName
     ? userName
         .split(/[.@ ]/)
@@ -227,8 +222,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         .join("")
     : "AU";
 
-  // ── Sidebar content (shared desktop + mobile) ──────────────────────────────
-
+  // ── Sidebar ────────────────────────────────────────────────────────
   const sidebar = (
     <div className="flex flex-col h-full">
       {/* Brand */}
@@ -258,7 +252,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   icon={item.icon}
                   label={item.label}
                   href={item.href}
-                  target={(item as any).target}
+                  target={item.target}
                   active={!item.target && (pathname === item.href || pathname.startsWith(item.href + "/"))}
                 />
               ))}
@@ -325,7 +319,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex flex-col flex-1 min-w-0 lg:pl-60 relative z-10">
         {/* Top Navbar */}
         <header className="sticky top-0 z-40 h-14 flex items-center px-4 md:px-6 gap-4 bg-background/70 backdrop-blur-xl border-b border-white/10 shadow-sm">
-          {/* Mobile hamburger */}
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground"
             onClick={() => setMobileOpen(true)}
@@ -333,21 +326,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu className="size-5" />
           </button>
 
-          {/* Page breadcrumb */}
           <div className="hidden md:flex items-center gap-2 text-muted-foreground text-xs font-semibold">
             <span className="text-foreground font-black text-sm">{pageLabel}</span>
           </div>
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Live clock */}
           <div className="hidden md:flex flex-col items-end leading-none">
             <span className="text-xs font-black text-foreground tabular-nums">{time}</span>
             <span className="text-[10px] text-muted-foreground mt-0.5">{date}</span>
           </div>
 
-          {/* Search trigger */}
           <button
             onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }}
             className="flex items-center gap-2 h-8 px-3 rounded-lg bg-white/5 border border-white/10 text-muted-foreground text-xs hover:bg-white/10 hover:text-foreground transition-all"
@@ -359,7 +348,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </kbd>
           </button>
 
-          {/* Notifications */}
           <div ref={notifRef} className="relative">
             <button
               onClick={() => setNotifOpen((o) => !o)}
@@ -369,7 +357,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-background" />
             </button>
 
-            {/* Notification panel */}
             {notifOpen && (
               <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-background/95 backdrop-blur-2xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
@@ -401,13 +388,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
           </div>
 
-          {/* Avatar (already shows user initials) */}
           <div className="size-8 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-black text-xs cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all">
             {userInitials}
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 px-4 md:px-6 py-6 overflow-y-auto">
           {children}
         </main>
