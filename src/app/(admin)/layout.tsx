@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -28,12 +28,21 @@ import {
   Activity,
   Command,
   ShoppingCart,
+  ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const menuGroups = [
+const menuGroups: {
+  title: string;
+  items: {
+    icon: any;
+    label: string;
+    href: string;
+    target?: string;
+  }[];
+}[] = [
   {
     title: "Operational",
     items: [
@@ -61,6 +70,12 @@ const menuGroups = [
       { icon: MapPin,           label: "Branches",    href: "/branches" },
     ],
   },
+  {
+    title: "Backend",
+    items: [
+      { icon: ExternalLink, label: "ERPNext Backend", href: "/erp", target: "_blank" },
+    ],
+  },
 ];
 
 const notifications = [
@@ -72,7 +87,24 @@ const notifications = [
 
 // ── Sidebar nav item ──────────────────────────────────────────────────────────
 
-function NavItem({ icon: Icon, label, href, active }: { icon: any; label: string; href: string; active: boolean }) {
+function NavItem({ icon: Icon, label, href, target, active }: {
+  icon: any;
+  label: string;
+  href: string;
+  target?: string;
+  active: boolean;
+}) {
+  if (target === "_blank") {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        <div className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group text-muted-foreground hover:text-foreground hover:bg-white/5">
+          <Icon className="size-4 shrink-0" />
+          <span className="truncate">{label}</span>
+        </div>
+      </a>
+    );
+  }
+
   return (
     <Link href={href}>
       <div
@@ -99,13 +131,51 @@ function NavItem({ icon: Icon, label, href, active }: { icon: any; label: string
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen]   = useState(false);
   const [notifOpen,  setNotifOpen]    = useState(false);
   const [searchOpen, setSearchOpen]   = useState(false);
   const [query,      setQuery]        = useState("");
   const [now,        setNow]          = useState(new Date());
+  const [userName,   setUserName]     = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
+
+  // Fetch logged-in user from ERPNext
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/erp/api/method/frappe.auth.get_logged_user", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserName(data.message); // e.g. "john.doe@example.com"
+        } else {
+          // Not logged in – redirect to login
+          router.push("/login");
+        }
+      } catch {
+        // If the fetch fails, assume not authenticated
+        router.push("/login");
+      }
+    };
+    fetchUser();
+  }, [router]);
+
+  // Logout handler
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch("/erp/api/method/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      // Even if logout fails, clear local state and redirect
+    }
+    setUserName(null);
+    router.push("/login");
+  }, [router]);
 
   // Live clock
   useEffect(() => {
@@ -147,6 +217,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
   })();
 
+  // User initials from name
+  const userInitials = userName
+    ? userName
+        .split(/[.@ ]/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((s) => s[0].toUpperCase())
+        .join("")
+    : "AU";
+
   // ── Sidebar content (shared desktop + mobile) ──────────────────────────────
 
   const sidebar = (
@@ -178,7 +258,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   icon={item.icon}
                   label={item.label}
                   href={item.href}
-                  active={pathname === item.href || pathname.startsWith(item.href + "/")}
+                  target={(item as any).target}
+                  active={!item.target && (pathname === item.href || pathname.startsWith(item.href + "/"))}
                 />
               ))}
             </div>
@@ -190,14 +271,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="px-3 pb-5 pt-3 border-t border-white/8 space-y-1">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition cursor-pointer">
           <div className="size-8 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-black text-xs shrink-0">
-            AU
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-foreground truncate">Admin User</p>
-            <p className="text-[10px] text-muted-foreground">Super Admin</p>
+            <p className="text-xs font-bold text-foreground truncate">
+              {userName || "Loading…"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Online</p>
           </div>
         </div>
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors"
+        >
           <LogOut className="size-4" />
           Sign out
         </button>
@@ -207,19 +293,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-background text-foreground flex font-sans">
-      {/* ── Ambient background ───────────────────────────────────────────── */}
+      {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-40 -left-40 size-[500px] bg-primary/10 blur-[120px] rounded-full" />
         <div className="absolute top-1/2 -right-40 size-[400px] bg-secondary/10 blur-[120px] rounded-full" />
         <div className="absolute -bottom-40 left-1/3 size-[450px] bg-accent/8 blur-[120px] rounded-full" />
       </div>
 
-      {/* ── Desktop Sidebar ──────────────────────────────────────────────── */}
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:flex-col w-60 shrink-0 fixed inset-y-0 left-0 z-30 bg-background/60 backdrop-blur-2xl border-r border-white/8 shadow-2xl">
         {sidebar}
       </aside>
 
-      {/* ── Mobile Sidebar Overlay ───────────────────────────────────────── */}
+      {/* Mobile Sidebar Overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
@@ -235,12 +321,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      {/* ── Main area ───────────────────────────────────────────────────── */}
+      {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0 lg:pl-60 relative z-10">
-
-        {/* ── Top Navbar ──────────────────────────────────────────────── */}
+        {/* Top Navbar */}
         <header className="sticky top-0 z-40 h-14 flex items-center px-4 md:px-6 gap-4 bg-background/70 backdrop-blur-xl border-b border-white/10 shadow-sm">
-
           {/* Mobile hamburger */}
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground"
@@ -317,19 +401,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
           </div>
 
-          {/* Avatar */}
+          {/* Avatar (already shows user initials) */}
           <div className="size-8 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-black text-xs cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all">
-            AU
+            {userInitials}
           </div>
         </header>
 
-        {/* ── Page content ────────────────────────────────────────────── */}
+        {/* Page content */}
         <main className="flex-1 px-4 md:px-6 py-6 overflow-y-auto">
           {children}
         </main>
       </div>
 
-      {/* ── Search modal ─────────────────────────────────────────────────── */}
+      {/* Search modal */}
       {searchOpen && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4"
