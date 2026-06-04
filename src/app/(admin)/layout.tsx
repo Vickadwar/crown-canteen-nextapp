@@ -170,8 +170,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       // Even if logout fails, clear local state
     }
     setUserName(null);
-    // Force a full page reload to / to clear any cached state
-    window.location.href = "/";
+    // Force a full page reload to /canteen to clear any cached state
+    window.location.href = "/canteen";
   }, []);
 
   // Live clock
