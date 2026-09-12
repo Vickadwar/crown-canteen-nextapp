@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# private bizz routes
+src/app/\(bizz\)/
+
+# temporary office lock files
+~$*
+

@@ -206,13 +206,13 @@ export default function NewSupplierPage() {
           <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="size-3.5 text-emerald-600" />
-              <p className="text-[11px] font-bold text-emerald-600">Frappe ERPNext</p>
+              <p className="text-[11px] font-bold text-emerald-600">Enterprise Procurement</p>
             </div>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {step === 1 && "Supplier name and KRA PIN create a Supplier Doctype in ERPNext automatically."}
-              {step === 2 && "Payment terms map to ERPNext's Payment Terms Template for automated PO scheduling."}
+              {step === 1 && "Supplier name and KRA PIN create an institutional vendor account automatically."}
+              {step === 2 && "Payment terms map to automated PO scheduling and financial reconciliation."}
               {step === 3 && "Portal access generates a secure login — the supplier can view POs, submit invoices, and track payments."}
-              {step === 4 && "On submit: Supplier Doctype, Payment Terms, and optional portal credentials are created."}
+              {step === 4 && "On submit: Vendor account, Payment Terms, and optional portal credentials are created."}
             </p>
           </div>
         </div>

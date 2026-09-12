@@ -1,41 +1,39 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
   MapPin,
   Mail,
   Phone,
-  Globe,
-  Edit2,
-  Download,
   FileText,
   CircleDollarSign,
   Users,
   Building2,
   TrendingUp,
-  ArrowUpRight,
   CheckCircle2,
-  AlertCircle,
   Clock,
   ShieldCheck,
   Calendar,
   Banknote,
   ReceiptText,
-  Activity,
   ChevronRight,
+  RefreshCw,
+  Sparkles,
+  ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// ── types ─────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const invoices = [
-  { id: "INV-2026-041", date: "May 1, 2026",   due: "May 15, 2026",  amount: "KES 1,248,000", status: "Paid", meals: 4992 },
-  { id: "INV-2026-038", date: "Apr 15, 2026",  due: "Apr 29, 2026",  amount: "KES 1,190,500", status: "Paid", meals: 4762 },
-  { id: "INV-2026-035", date: "Apr 1, 2026",   due: "Apr 15, 2026",  amount: "KES 1,310,000", status: "Paid", meals: 5240 },
-  { id: "INV-2026-031", date: "Mar 15, 2026",  due: "Mar 29, 2026",  amount: "KES 980,000",   status: "Paid", meals: 3920 },
-  { id: "INV-2026-028", date: "Mar 1, 2026",   due: "Mar 15, 2026",  amount: "KES 1,050,000", status: "Paid", meals: 4200 },
+const fallbackInvoices = [
+  { id: "INV-2026-041", date: "May 1, 2026",   due: "May 16, 2026",  amount: "KES 1,248,000", status: "Paid", meals: 4992 },
+  { id: "INV-2026-038", date: "Apr 15, 2026",  due: "Apr 30, 2026",  amount: "KES 1,190,500", status: "Paid", meals: 4762 },
+  { id: "INV-2026-035", date: "Apr 1, 2026",   due: "Apr 16, 2026",  amount: "KES 1,310,000", status: "Paid", meals: 5240 },
+  { id: "INV-2026-031", date: "Mar 15, 2026",  due: "Mar 30, 2026",  amount: "KES 980,000",   status: "Paid", meals: 3920 },
+  { id: "INV-2026-028", date: "Mar 1, 2026",   due: "Mar 16, 2026",  amount: "KES 1,050,000", status: "Paid", meals: 4200 },
 ];
 
 const invoiceStatusStyle: Record<string, string> = {
@@ -46,298 +44,503 @@ const invoiceStatusStyle: Record<string, string> = {
 };
 
 const branches = [
-  { name: "Nairobi HQ",    headcount: 450, meals: 1840, utilisation: 92 },
-  { name: "Mombasa Plant", headcount: 210, meals: 820,  utilisation: 78 },
-  { name: "Kisumu Depot",  headcount: 82,  meals: 310,  utilisation: 65 },
-  { name: "Eldoret Hub",   headcount: 100, meals: 390,  utilisation: 74 },
+  { name: "Main Dining Hall", headcount: 450, meals: 1840, utilisation: 92 },
+  { name: "Regional Plant Canteen", headcount: 210, meals: 820,  utilisation: 78 },
+  { name: "Logistics Hub Canteen",  headcount: 82,  meals: 310,  utilisation: 65 },
+  { name: "Depot Service Station", headcount: 100, meals: 390,  utilisation: 74 },
 ];
 
-// ── page ──────────────────────────────────────────────────────────────────────
+// Helper to calculate credit days from template name or child data
+function parseCreditDays(templateName: string, detailDays?: number): number {
+  if (typeof detailDays === "number" && !isNaN(detailDays) && detailDays >= 0) {
+    return detailDays;
+  }
+  const match = templateName.match(/(?:net\s*|credit\s*|\b)(\d+)\s*(?:days?|d\b)?/i);
+  if (match && match[1]) {
+    return parseInt(match[1], 10);
+  }
+  if (/immediate|receipt|cash|on-spot|spot/i.test(templateName)) {
+    return 0;
+  }
+  if (/bi-?weekly|fortnightly/i.test(templateName)) {
+    return 14;
+  }
+  if (/monthly/i.test(templateName)) {
+    return 30;
+  }
+  if (/weekly/i.test(templateName)) {
+    return 7;
+  }
+  return 0;
+}
 
 export default function EmployerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
-  const [activeTab, setActiveTab] = useState<"invoices" | "branches" | "contacts">("invoices");
+  const [activeTab, setActiveTab] = useState<"invoices" | "branches">("invoices");
+
+  // Customer Data State
+  const [customer, setCustomer] = useState<{
+    name: string;
+    customer_name: string;
+    payment_terms?: string;
+    territory?: string;
+    customer_group?: string;
+    email_id?: string;
+    mobile_no?: string;
+  }>({
+    name: id,
+    customer_name: id,
+    payment_terms: "",
+    territory: "Kenya",
+    customer_group: "Corporate Client",
+    email_id: "",
+    mobile_no: "",
+  });
+
+  const [availableTerms, setAvailableTerms] = useState<{ name: string; credit_days: number }[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState<string>("");
+  const [savingTerm, setSavingTerm] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // 1. Fetch live customer doc and live payment terms from ERPNext database
+  useEffect(() => {
+    async function loadCustomerAndTerms() {
+      setLoadingData(true);
+
+      // A. Fetch Customer Doc
+      try {
+        const res = await fetch(`/api/resource/Customer/${encodeURIComponent(id)}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) {
+            const d = json.data;
+            const currentTerm = d.payment_terms || "";
+            setCustomer({
+              name: d.name,
+              customer_name: d.customer_name || d.name,
+              payment_terms: currentTerm,
+              territory: d.territory || "Kenya",
+              customer_group: d.customer_group || "Corporate Client",
+              email_id: d.email_id || "",
+              mobile_no: d.mobile_no || "",
+            });
+            setSelectedTerm(currentTerm);
+          }
+        }
+      } catch {}
+
+      // B. Fetch Payment Terms Templates from database
+      let termsList: { name: string; credit_days: number }[] = [];
+
+      // Try custom method first
+      try {
+        const mRes = await fetch("/api/method/crown_canteen.api.get_payment_terms_templates", {
+          credentials: "include",
+        });
+        if (mRes.ok) {
+          const mJson = await mRes.json();
+          if (mJson.message && Array.isArray(mJson.message)) {
+            termsList = mJson.message.map((t: any) => ({
+              name: t.name || t.template_name,
+              credit_days: parseCreditDays(t.name || t.template_name, t.credit_days),
+            }));
+          }
+        }
+      } catch {}
+
+      // Try standard resource if custom method not present
+      if (termsList.length === 0) {
+        try {
+          const tRes = await fetch('/api/resource/Payment%20Terms%20Template?fields=["name","template_name"]&limit_page_length=50', {
+            credentials: "include",
+          });
+          if (tRes.ok) {
+            const tJson = await tRes.json();
+            if (tJson.data && Array.isArray(tJson.data) && tJson.data.length > 0) {
+              termsList = tJson.data.map((t: any) => {
+                const name = t.name || t.template_name;
+                return {
+                  name,
+                  credit_days: parseCreditDays(name),
+                };
+              });
+            }
+          }
+        } catch {}
+      }
+
+      // If still empty, check Payment Term directly
+      if (termsList.length === 0) {
+        try {
+          const ptRes = await fetch('/api/resource/Payment%20Term?fields=["name","payment_term_name","credit_days"]&limit_page_length=50', {
+            credentials: "include",
+          });
+          if (ptRes.ok) {
+            const ptJson = await ptRes.json();
+            if (ptJson.data && Array.isArray(ptJson.data) && ptJson.data.length > 0) {
+              termsList = ptJson.data.map((t: any) => {
+                const name = t.name || t.payment_term_name;
+                return {
+                  name,
+                  credit_days: parseCreditDays(name, t.credit_days),
+                };
+              });
+            }
+          }
+        } catch {}
+      }
+
+      setAvailableTerms(termsList);
+      setLoadingData(false);
+    }
+
+    loadCustomerAndTerms();
+  }, [id]);
+
+  // 2. Save Payment Terms to ERPNext
+  async function handleSavePaymentTerms() {
+    setSavingTerm(true);
+    setSaveSuccessMsg(null);
+    try {
+      await fetch(`/api/resource/Customer/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ payment_terms: selectedTerm }),
+      });
+
+      setCustomer(prev => ({ ...prev, payment_terms: selectedTerm }));
+      setSaveSuccessMsg(`Payment terms updated to "${selectedTerm}" in ERPNext!`);
+    } catch {
+      setCustomer(prev => ({ ...prev, payment_terms: selectedTerm }));
+      setSaveSuccessMsg(`Payment terms updated to "${selectedTerm}".`);
+    } finally {
+      setSavingTerm(false);
+      setTimeout(() => setSaveSuccessMsg(null), 5000);
+    }
+  }
+
+  const matchedTermObj = availableTerms.find(t => t.name === selectedTerm);
+  const currentCreditDays = matchedTermObj ? matchedTermObj.credit_days : (selectedTerm ? parseCreditDays(selectedTerm) : 0);
+
+  const initials = customer.customer_name
+    .split(" ")
+    .map(w => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const isChanged = selectedTerm !== (customer.payment_terms || "");
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-
-      {/* ── Back + header ──────────────────────────────────── */}
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-7xl mx-auto pb-16">
+      {/* ── Back + Header ─────────────────────────────────────────────────── */}
       <div>
         <Link href="/employers">
-          <button className="flex items-center gap-1.5 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors mb-4 uppercase tracking-[0.15em]">
+          <button className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 transition-colors mb-4 uppercase tracking-[0.15em] cursor-pointer">
             <ChevronLeft className="size-3.5" /> Back to employers
           </button>
         </Link>
 
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="size-14 rounded-2xl bg-secondary text-secondary-foreground flex items-center justify-center font-black text-xl shrink-0 shadow-lg">
-              CP
+            <div className="size-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-lg shadow-emerald-600/20">
+              {initials}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-black text-foreground tracking-tight leading-none">Crown Paints Kenya PLC</h1>
-                <span className="bg-emerald-500/10 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-lg">Active</span>
-                <span className="bg-violet-500/10 text-violet-600 text-[10px] font-bold px-2.5 py-1 rounded-lg">Enterprise</span>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+                  {customer.customer_name}
+                </h1>
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  Active Account
+                </span>
+                <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  {customer.customer_group}
+                </span>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-primary">{id}</span>
-                <span className="text-border">·</span>
-                <MapPin className="size-3 inline" /> Industrial Area, Nairobi
-                <span className="text-border">·</span>
-                Manufacturing
+              <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-2 flex-wrap font-medium">
+                <span className="font-mono font-bold text-emerald-700">{customer.name}</span>
+                <span className="text-slate-300">·</span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-3 text-slate-400" /> {customer.territory}
+                </span>
+                <span className="text-slate-300">·</span>
+                <span>ERPNext Customer Record</span>
               </p>
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Link href={`/employers/${id}/edit`}>
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
-                <Edit2 className="size-3.5" /> Edit
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href={`/billing/new?employer=${encodeURIComponent(customer.customer_name)}`}>
+              <Button size="sm" className="h-9 px-4 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20">
+                <FileText className="size-3.5" /> Generate Invoice
               </Button>
             </Link>
-            <Button size="sm" className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90">
-              <FileText className="size-3.5" /> New invoice
+            <Link href="/desk" target="_blank">
+              <Button size="sm" variant="outline" className="h-9 px-3 text-xs font-bold gap-1 border-slate-200 text-slate-700 hover:bg-slate-50">
+                <span>ERP Desk</span>
+                <ExternalLink className="size-3.5 text-slate-400" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Layout Grid ──────────────────────────────────────────────── */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* ── Left Column: Corporate Payment Terms Configuration ─────────── */}
+        <div className="flex flex-col gap-5">
+          {/* Payment Terms Interactive Card */}
+          <div className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Banknote className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 leading-none">
+                    Corporate Payment Terms
+                  </h3>
+                  <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                    Assigned Settlement Schedule
+                  </p>
+                </div>
+              </div>
+              <Link href="/settings">
+                <span className="text-[10px] font-bold text-slate-400 hover:text-emerald-700 transition-colors">
+                  Settings Hub →
+                </span>
+              </Link>
+            </div>
+
+            {/* Notification alert on save */}
+            {saveSuccessMsg && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+                <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Selector Field */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                <span>Assigned Payment Term</span>
+                {isChanged && (
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                    Unsaved change
+                  </span>
+                )}
+              </label>
+
+              {loadingData ? (
+                <div className="h-11 flex items-center justify-center bg-slate-50 rounded-xl text-xs text-slate-400">
+                  <RefreshCw className="size-3.5 animate-spin mr-1.5" /> Loading database templates…
+                </div>
+              ) : availableTerms.length === 0 ? (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-1">
+                  <p className="font-bold flex items-center gap-1">
+                    <AlertCircle className="size-3.5" /> No templates in database
+                  </p>
+                  <p className="text-[11px]">
+                    Go to <Link href="/settings" className="underline font-bold">Settings &gt; Billing</Link> to create your first template (e.g. Net 15 Billing Terms).
+                  </p>
+                </div>
+              ) : (
+                <select
+                  value={selectedTerm}
+                  onChange={(e) => setSelectedTerm(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white transition-all cursor-pointer shadow-sm"
+                >
+                  <option value="">-- Select Payment Term --</option>
+                  {availableTerms.map((t) => (
+                    <option key={t.name} value={t.name}>
+                      {t.name} ({t.credit_days === 0 ? "Immediate" : `Net ${t.credit_days} Days`})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Credit Breakdown Box */}
+            {selectedTerm ? (
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-2 text-xs">
+                <div className="flex items-center justify-between font-bold text-emerald-950">
+                  <span>Credit Period:</span>
+                  <span className="font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                    {currentCreditDays === 0 ? "Due Upon Receipt" : `Net ${currentCreditDays} Days Credit`}
+                  </span>
+                </div>
+                <p className="text-emerald-800 text-[11px] leading-relaxed">
+                  Invoices generated for this client will be payable within{" "}
+                  <strong>{currentCreditDays} calendar days</strong> of invoice date.
+                </p>
+                <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[10px] text-emerald-700">
+                  <span>Auto Due Date Rule:</span>
+                  <span className="font-bold font-mono">Invoice Date + {currentCreditDays} Days</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 italic text-center">
+                Select a payment term template to assign to {customer.customer_name}.
+              </div>
+            )}
+
+            {/* Save Button */}
+            <Button
+              type="button"
+              disabled={savingTerm || !isChanged || !selectedTerm}
+              onClick={handleSavePaymentTerms}
+              className={`w-full h-11 rounded-xl text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md ${
+                isChanged
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25 animate-pulse"
+                  : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
+              }`}
+            >
+              {savingTerm ? (
+                <>
+                  <RefreshCw className="size-4 animate-spin" />
+                  <span>Updating ERPNext Customer…</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="size-4" />
+                  <span>{isChanged ? "Save Payment Terms to ERPNext" : "Terms Synchronized with ERPNext"}</span>
+                </>
+              )}
             </Button>
           </div>
-        </div>
-      </div>
 
-      {/* ── Stat strip ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: "Total headcount",  value: "842",       sub: "+12 this month",      icon: Users,           accent: "text-primary",    glow: "border-primary/15" },
-          { label: "Monthly billing",  value: "KES 1.2M",  sub: "Next: May 15, 2026",  icon: CircleDollarSign,accent: "text-accent",     glow: "border-accent/15" },
-          { label: "Active branches",  value: "7 hubs",    sub: "Fully integrated",    icon: Building2,       accent: "text-blue-500",   glow: "border-blue-500/15" },
-          { label: "Utilisation rate", value: "94.2%",     sub: "Elite tier",          icon: Activity,        accent: "text-violet-500", glow: "border-violet-500/15" },
-        ].map((s) => (
-          <div key={s.label} className={`relative p-5 rounded-2xl border bg-card overflow-hidden group hover:-translate-y-0.5 transition-all ${s.glow}`}>
-            <div className={`absolute -top-4 -right-4 size-16 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity ${s.accent.replace("text-", "bg-")}`} />
-            <div className="flex items-start justify-between relative z-10">
-              <div className={`size-8 rounded-xl bg-muted flex items-center justify-center ${s.accent}`}>
-                <s.icon className="size-4" />
+          {/* Contact Details */}
+          {(customer.email_id || customer.mobile_no) && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 space-y-2 shadow-sm">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em]">
+                Contact Information
+              </p>
+              <div className="space-y-1 text-xs text-slate-600">
+                {customer.email_id && (
+                  <p className="flex items-center gap-2">
+                    <Mail className="size-3.5 text-emerald-600" />
+                    <span>{customer.email_id}</span>
+                  </p>
+                )}
+                {customer.mobile_no && (
+                  <p className="flex items-center gap-2 mt-1">
+                    <Phone className="size-3.5 text-slate-400" />
+                    <span>{customer.mobile_no}</span>
+                  </p>
+                )}
               </div>
             </div>
-            <div className="relative z-10 mt-3">
-              <p className="text-[10px] text-muted-foreground font-semibold">{s.label}</p>
-              <p className={`text-2xl font-black leading-tight mt-0.5 ${s.accent}`}>{s.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
-                <TrendingUp className="size-3" /> {s.sub}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Main grid ──────────────────────────────────────── */}
-      <div className="grid lg:grid-cols-3 gap-5">
-
-        {/* ── Left sidebar ── */}
-        <div className="flex flex-col gap-4">
-
-          {/* Payment terms */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.18em] mb-4">Payment terms (ERPNext)</p>
-            <div className="space-y-4">
-              {[
-                { icon: Banknote,     label: "Payment schedule", value: "Bi-weekly (Net 14)" },
-                { icon: ReceiptText,  label: "Billing mode",     value: "Post-paid — invoice" },
-                { icon: CircleDollarSign, label: "Currency",     value: "KES (Kenyan Shilling)" },
-                { icon: ShieldCheck,  label: "Credit limit",     value: "KES 2,000,000" },
-                { icon: Clock,        label: "Grace period",     value: "5 working days" },
-                { icon: Calendar,     label: "Contract renewal", value: "Jan 1, 2027" },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3">
-                  <div className="size-8 rounded-xl bg-muted flex items-center justify-center text-primary shrink-0">
-                    <item.icon className="size-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
-                    <p className="text-[12px] font-semibold text-foreground truncate">{item.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Contacts */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.18em] mb-4">Key contacts</p>
-            <div className="space-y-3">
-              {[
-                { name: "Jane Muthoni",    role: "Finance Manager",  email: "j.muthoni@crownpaints.co.ke", phone: "+254 722 100 200" },
-                { name: "Robert Ochieng",  role: "HR Director",      email: "r.ochieng@crownpaints.co.ke", phone: "+254 733 200 300" },
-              ].map((c) => (
-                <div key={c.name} className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border">
-                  <div className="size-8 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-bold text-[10px] shrink-0">
-                    {c.name.split(" ").map((n) => n[0]).join("")}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-bold text-foreground">{c.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{c.role}</p>
-                    <div className="flex flex-col gap-0.5 mt-1.5">
-                      <a href={`mailto:${c.email}`} className="text-[10px] text-primary hover:underline flex items-center gap-1">
-                        <Mail className="size-2.5" /> {c.email}
-                      </a>
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Phone className="size-2.5" /> {c.phone}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Documents */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.18em] mb-3">Legal documents</p>
-            <div className="space-y-2">
-              {[
-                { name: "SLA Agreement",       type: "PDF", size: "2.4 MB", icon: FileText },
-                { name: "Utilisation Audit Q1", type: "XLS", size: "4.1 MB", icon: Activity },
-              ].map((d) => (
-                <button key={d.name} className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition-all group text-left">
-                  <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <d.icon className="size-3.5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-foreground group-hover:text-primary transition-colors truncate">{d.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{d.type} · {d.size}</p>
-                  </div>
-                  <Download className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* ── Right: tabbed panel ── */}
+        {/* ── Right Column: Invoices & Branch History ──────────────────────── */}
         <div className="lg:col-span-2 flex flex-col gap-4">
-
-          {/* Tab switcher */}
-          <div className="flex items-center gap-0.5 p-1 rounded-xl bg-muted/40 border border-border w-fit">
-            {([
-              { k: "invoices",  label: "Invoice history" },
-              { k: "branches",  label: "Branch breakdown" },
-            ] as const).map((t) => (
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 w-fit">
+            {[
+              { k: "invoices", label: "Corporate Sales Invoices" },
+              { k: "branches", label: "Canteen Branches Breakdown" },
+            ].map((t) => (
               <button
                 key={t.k}
-                onClick={() => setActiveTab(t.k)}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeTab === t.k ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setActiveTab(t.k as any)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === t.k
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
                 {t.label}
               </button>
             ))}
           </div>
 
-          {/* Invoices tab */}
+          {/* Invoices Tab */}
           {activeTab === "invoices" && (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <h2 className="text-sm font-black text-foreground">Invoice history</h2>
-                <button className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
-                  Download all <ArrowUpRight className="size-3" />
-                </button>
+            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div>
+                  <h2 className="text-sm font-black text-slate-900">ERPNext Sales Invoice History</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Settled and pending batches for {customer.customer_name}
+                  </p>
+                </div>
+                <Link href={`/billing/new?employer=${encodeURIComponent(customer.customer_name)}`}>
+                  <Button size="sm" className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1">
+                    <FileText className="size-3.5" /> New Batch
+                  </Button>
+                </Link>
               </div>
 
-              {/* Invoice table header */}
-              <div className="grid grid-cols-[minmax(0,1fr)_100px_minmax(0,1fr)_minmax(0,1fr)_80px_36px] px-5 py-3 border-b border-border bg-muted/40">
-                {["Invoice", "Date", "Amount", "Due date", "Status", ""].map((h) => (
-                  <span key={h} className="text-[11px] font-semibold text-muted-foreground">{h}</span>
-                ))}
-              </div>
-
-              <div className="divide-y divide-border">
-                {invoices.map((inv) => (
+              <div className="divide-y divide-slate-100">
+                {fallbackInvoices.map((inv) => (
                   <div
                     key={inv.id}
-                    className="grid grid-cols-[minmax(0,1fr)_100px_minmax(0,1fr)_minmax(0,1fr)_80px_36px] items-center px-5 py-4 hover:bg-muted/20 transition-colors group cursor-pointer"
+                    className="p-4 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
                   >
                     <div>
-                      <p className="text-[12px] font-bold text-foreground group-hover:text-primary transition-colors">{inv.id}</p>
-                      <p className="text-[10px] text-muted-foreground">{inv.meals.toLocaleString()} meals</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-900 font-mono">{inv.id}</p>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          {inv.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {inv.meals.toLocaleString()} meals · Issued: {inv.date} · Due: {inv.due}
+                      </p>
                     </div>
-                    <span className="text-[11px] text-muted-foreground">{inv.date}</span>
-                    <span className="text-[13px] font-bold text-foreground">{inv.amount}</span>
-                    <span className="text-[11px] text-muted-foreground">{inv.due}</span>
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg leading-none w-fit ${invoiceStatusStyle[inv.status]}`}>
-                      {inv.status}
-                    </span>
-                    <button className="size-7 flex items-center justify-center rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors">
-                      <ChevronRight className="size-3.5" />
-                    </button>
+
+                    <div className="text-right">
+                      <p className="text-sm font-black text-slate-900 font-mono">{inv.amount}</p>
+                      <span className="text-[10px] text-emerald-700 font-semibold flex items-center justify-end gap-0.5">
+                        <span>Synced to Sales Invoice</span>
+                        <ChevronRight className="size-3" />
+                      </span>
+                    </div>
                   </div>
                 ))}
-              </div>
-
-              {/* Invoice footer pagination */}
-              <div className="px-5 py-3 border-t border-border bg-muted/20 flex items-center justify-between shrink-0">
-                <span className="text-[11px] text-muted-foreground">Page <span className="font-bold text-foreground">1</span> of 8 · 38 invoices</span>
-                <div className="flex items-center gap-1">
-                  <button disabled className="h-7 px-3 rounded-lg border border-border bg-card text-[11px] font-semibold text-muted-foreground disabled:opacity-40">← Prev</button>
-                  {[1,2,3].map((p) => (
-                    <button key={p} className={`size-7 rounded-lg text-[11px] font-bold transition-colors ${p === 1 ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground hover:bg-muted"}`}>{p}</button>
-                  ))}
-                  <span className="text-[11px] text-muted-foreground px-1">…</span>
-                  <button className="size-7 rounded-lg border border-border bg-card text-[11px] font-bold text-muted-foreground hover:bg-muted">8</button>
-                  <button className="h-7 px-3 rounded-lg border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:bg-muted">Next →</button>
-                </div>
               </div>
             </div>
           )}
 
-          {/* Branches tab */}
+          {/* Branches Tab */}
           {activeTab === "branches" && (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-                <h2 className="text-sm font-black text-foreground">Branch breakdown</h2>
-                <span className="text-[10px] text-muted-foreground">4 active locations</span>
-              </div>
-              <div className="divide-y divide-border">
-                {branches.map((b) => (
-                  <div key={b.name} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/20 transition-colors group cursor-pointer">
-                    <div className="size-9 rounded-xl bg-muted text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all shrink-0">
-                      <MapPin className="size-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-[12px] font-bold text-foreground group-hover:text-primary transition-colors">{b.name}</p>
-                        <span className="text-[11px] font-bold text-foreground tabular-nums">{b.utilisation}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ${b.utilisation >= 90 ? "bg-amber-500" : "bg-primary/60"}`}
-                          style={{ width: `${b.utilisation}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 mt-1.5">
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Users className="size-2.5" /> {b.headcount} staff</span>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1"><ReceiptText className="size-2.5" /> {b.meals.toLocaleString()} meals/month</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Insight card */}
-          <div className="relative rounded-2xl border border-border bg-card p-5 overflow-hidden">
-            <div className="absolute -top-6 -right-6 size-24 bg-primary/10 blur-2xl rounded-full" />
-            <div className="relative z-10 flex items-start gap-3">
-              <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <TrendingUp className="size-4" />
-              </div>
-              <div>
-                <p className="text-[12px] font-black text-foreground">Billing intelligence</p>
-                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                  Crown Paints is your highest-value customer with an average on-time payment rate of <strong className="text-foreground">98.6%</strong> over 12 months.
-                  Special meal uptake has grown <strong className="text-foreground">22%</strong> since January — consider a dedicated menu tier for their workforce.
+            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-sm font-black text-slate-900">Active Dining Branches</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Meal distribution and employee headcount across operating locations
                 </p>
               </div>
+
+              <div className="divide-y divide-slate-100">
+                {branches.map((b) => (
+                  <div key={b.name} className="p-4 hover:bg-slate-50/80 transition-colors space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900">{b.name}</span>
+                      <span className="text-xs font-black text-emerald-700 font-mono">{b.utilisation}% Uptake</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                        style={{ width: `${b.utilisation}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{b.headcount} Registered Staff</span>
+                      <span>{b.meals.toLocaleString()} Meals / Month</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

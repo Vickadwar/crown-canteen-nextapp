@@ -29,10 +29,12 @@ import {
   Command,
   ShoppingCart,
   ExternalLink,
+  Settings,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Logo } from "@/components/ui/logo";
 
-// ── Menu groups (note the ERPNext Backend now goes to /desk) ──────────
+// ── Menu groups ───────────────────────────────────────────────────────
 const menuGroups: {
   title: string;
   items: {
@@ -53,7 +55,7 @@ const menuGroups: {
   {
     title: "Entities",
     items: [
-      { icon: Users,    label: "Employees", href: "/employees" },
+      { icon: Users,    label: "Canteen Customers", href: "/employees" },
       { icon: Building2,label: "Employers", href: "/employers" },
       { icon: Truck,    label: "Suppliers", href: "/suppliers" },
     ],
@@ -70,8 +72,9 @@ const menuGroups: {
     ],
   },
   {
-    title: "Backend",
+    title: "System & Config",
     items: [
+      { icon: Settings, label: "Settings", href: "/settings" },
       { icon: ExternalLink, label: "ERP Login", href: "/desk", target: "_blank" },
     ],
   },
@@ -98,6 +101,7 @@ function NavItem({ icon: Icon, label, href, target, active }: {
         <div className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group text-muted-foreground hover:text-foreground hover:bg-white/5">
           <Icon className="size-4 shrink-0" />
           <span className="truncate">{label}</span>
+          <ExternalLink className="ml-auto size-3 opacity-40 group-hover:opacity-80" />
         </div>
       </a>
     );
@@ -106,13 +110,11 @@ function NavItem({ icon: Icon, label, href, target, active }: {
   return (
     <Link href={href}>
       <div
-        className={`
-          relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group
-          ${active
-            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group ${
+          active
+            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 font-bold"
             : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-          }
-        `}
+        }`}
       >
         {active && (
           <span className="absolute inset-0 rounded-xl ring-1 ring-primary/40" />
@@ -134,9 +136,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [searchOpen, setSearchOpen]   = useState(false);
   const [query,      setQuery]        = useState("");
   const [now,        setNow]          = useState(new Date());
+  const [mounted,    setMounted]      = useState(false);
   const [userName,   setUserName]     = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Check authentication on mount & route change
   useEffect(() => {
@@ -149,11 +156,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           const data = await res.json();
           setUserName(data.message);
         } else {
-          // Not authenticated – redirect to home (login page)
-          router.replace("/");
+          router.replace("/auth/login");
         }
       } catch {
-        router.replace("/");
+        router.replace("/auth/login");
       }
     };
     fetchUser();
@@ -166,12 +172,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         method: "POST",
         credentials: "include",
       });
-    } catch (err) {
-      // Even if logout fails, clear local state
-    }
+    } catch (err) {}
     setUserName(null);
-    // Force a full page reload to /canteen to clear any cached state
-    window.location.href = "/canteen";
+    window.location.href = "/auth/login";
   }, []);
 
   // Live clock
@@ -205,8 +208,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener("keydown", handle);
   }, []);
 
-  const time = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
-  const date = now.toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short" });
+  const time = mounted ? now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" }) : "";
+  const date = mounted ? now.toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short" }) : "";
 
   const pageLabel = (() => {
     const seg = pathname.split("/").filter(Boolean).pop() ?? "overview";
@@ -224,18 +227,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // ── Sidebar ────────────────────────────────────────────────────────
   const sidebar = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" suppressHydrationWarning>
       {/* Brand */}
       <div className="px-5 pt-6 pb-5 border-b border-white/8">
-        <div className="flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-black text-base shadow-lg shadow-primary/30">
-            CC
-          </div>
-          <div className="leading-none">
-            <p className="text-[13px] font-black text-foreground tracking-tight">CrownCanteen</p>
-            <p className="text-[10px] text-primary font-semibold uppercase tracking-widest mt-0.5">Admin Portal</p>
-          </div>
-        </div>
+        <Logo subtitle="Admin Portal" href="/overview" iconSize="sm" />
       </div>
 
       {/* Navigation */}
@@ -253,7 +248,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   label={item.label}
                   href={item.href}
                   target={item.target}
-                  active={!item.target && (pathname === item.href || pathname.startsWith(item.href + "/"))}
+                  active={pathname === item.href || (item.href !== "/overview" && pathname.startsWith(item.href))}
                 />
               ))}
             </div>
@@ -261,13 +256,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         ))}
       </nav>
 
-      {/* User + logout */}
-      <div className="px-3 pb-5 pt-3 border-t border-white/8 space-y-1">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition cursor-pointer">
-          <div className="size-8 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-black text-xs shrink-0">
+      {/* Bottom user card */}
+      <div className="px-3 pb-5 pt-2 border-t border-white/8 space-y-2" suppressHydrationWarning>
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/4 border border-white/6">
+          <div className="size-8 rounded-lg bg-primary/20 text-primary border border-primary/30 font-black text-xs flex items-center justify-center shrink-0">
             {userInitials}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-foreground truncate">
               {userName || "Loading…"}
             </p>
@@ -276,7 +271,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors"
+          suppressHydrationWarning
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
         >
           <LogOut className="size-4" />
           Sign out
@@ -286,7 +282,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex font-sans">
+    <div className="min-h-screen bg-background text-foreground flex font-sans" suppressHydrationWarning>
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-40 -left-40 size-[500px] bg-primary/10 blur-[120px] rounded-full" />
@@ -307,6 +303,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
               onClick={() => setMobileOpen(false)}
+              suppressHydrationWarning
             >
               <X className="size-5" />
             </button>
@@ -318,10 +315,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0 lg:pl-60 relative z-10">
         {/* Top Navbar */}
-        <header className="sticky top-0 z-40 h-14 flex items-center px-4 md:px-6 gap-4 bg-background/70 backdrop-blur-xl border-b border-white/10 shadow-sm">
+        <header className="sticky top-0 z-40 h-14 flex items-center px-4 md:px-6 gap-4 bg-background/70 backdrop-blur-xl border-b border-white/10 shadow-sm" suppressHydrationWarning>
           <button
             className="lg:hidden text-muted-foreground hover:text-foreground"
             onClick={() => setMobileOpen(true)}
+            suppressHydrationWarning
           >
             <Menu className="size-5" />
           </button>
@@ -332,14 +330,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <div className="flex-1" />
 
-          <div className="hidden md:flex flex-col items-end leading-none">
-            <span className="text-xs font-black text-foreground tabular-nums">{time}</span>
-            <span className="text-[10px] text-muted-foreground mt-0.5">{date}</span>
+          <div className="hidden md:flex flex-col items-end leading-none" suppressHydrationWarning>
+            <span className="text-xs font-black text-foreground tabular-nums" suppressHydrationWarning>{time}</span>
+            <span className="text-[10px] text-muted-foreground mt-0.5" suppressHydrationWarning>{date}</span>
           </div>
 
           <button
             onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 50); }}
-            className="flex items-center gap-2 h-8 px-3 rounded-lg bg-white/5 border border-white/10 text-muted-foreground text-xs hover:bg-white/10 hover:text-foreground transition-all"
+            suppressHydrationWarning
+            className="flex items-center gap-2 h-8 px-3 rounded-lg bg-white/5 border border-white/10 text-muted-foreground text-xs hover:bg-white/10 hover:text-foreground transition-all cursor-pointer"
           >
             <Search className="size-3.5" />
             <span className="hidden sm:inline">Search…</span>
@@ -351,7 +350,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div ref={notifRef} className="relative">
             <button
               onClick={() => setNotifOpen((o) => !o)}
-              className={`relative size-8 flex items-center justify-center rounded-lg transition-colors ${notifOpen ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}
+              suppressHydrationWarning
+              className={`relative size-8 flex items-center justify-center rounded-lg transition-colors cursor-pointer ${notifOpen ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-white/5"}`}
             >
               <Bell className="size-4" />
               <span className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-background" />
@@ -359,86 +359,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {notifOpen && (
               <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-background/95 backdrop-blur-2xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-                  <p className="text-sm font-black text-foreground">Notifications</p>
-                  <Badge className="bg-primary/20 text-primary border-0 text-[10px] font-bold px-2 py-0.5">4 new</Badge>
+                <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
+                  <span className="text-xs font-black text-foreground uppercase tracking-wider">Notifications</span>
+                  <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20 font-bold">4 new</Badge>
                 </div>
-                <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
+                <div className="divide-y divide-white/5 max-h-72 overflow-y-auto">
                   {notifications.map((n) => (
-                    <div key={n.id} className="flex gap-3 px-5 py-3.5 hover:bg-white/5 cursor-pointer transition-colors group">
-                      <div className={`size-8 rounded-xl shrink-0 flex items-center justify-center text-sm
-                        ${n.type === "warning" ? "bg-amber-500/15 text-amber-400" :
-                          n.type === "success" ? "bg-primary/15 text-primary" :
-                          "bg-blue-500/10 text-blue-400"}`}
-                      >
-                        <n.icon className="size-4" />
+                    <div key={n.id} className="p-3 hover:bg-white/5 transition-colors flex items-start gap-3">
+                      <div className="size-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0 mt-0.5">
+                        <n.icon className="size-3.5 text-primary" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">{n.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{n.desc}</p>
-                        <p className="text-[10px] text-muted-foreground/50 mt-1 font-medium">{n.time}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
+                        <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{n.desc}</p>
+                        <p className="text-[9px] text-muted-foreground/60 mt-1">{n.time}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <button className="w-full py-3 text-[11px] font-bold text-primary hover:bg-primary/5 border-t border-white/8 transition-colors">
-                  View all activity →
-                </button>
               </div>
             )}
           </div>
-
-          <div className="size-8 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-black text-xs cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all">
-            {userInitials}
-          </div>
         </header>
 
-        <main className="flex-1 px-4 md:px-6 py-6 overflow-y-auto">
+        {/* Content Body */}
+        <main className="flex-1 p-4 md:p-6" suppressHydrationWarning>
           {children}
         </main>
       </div>
-
-      {/* Search modal */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setSearchOpen(false); }}
-        >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-md" />
-          <div className="relative w-full max-w-lg rounded-2xl bg-background/95 backdrop-blur-2xl border border-white/15 shadow-[0_30px_80px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
-              <Search className="size-4 text-primary shrink-0" />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search employees, orders, reports…"
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-              <button onClick={() => setSearchOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="p-3">
-              <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-widest px-2 mb-2">Quick Navigate</p>
-              <div className="space-y-0.5">
-                {menuGroups.flatMap((g) => g.items).map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSearchOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
-                  >
-                    <item.icon className="size-4 group-hover:text-primary transition-colors" />
-                    {item.label}
-                    <ChevronRight className="ml-auto size-3 opacity-0 group-hover:opacity-60" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

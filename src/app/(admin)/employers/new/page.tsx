@@ -186,7 +186,7 @@ export default function NewEmployerPage() {
               <p className="text-[11px] font-bold text-primary uppercase tracking-[0.2em] mb-1">Onboarding</p>
               <h1 className="text-xl font-black text-foreground tracking-tight leading-tight mb-2">Add new employer</h1>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Set up a corporate canteen account linked to Frappe ERPNext as a Customer Doctype with full billing integration.
+                Set up a corporate canteen client account with automated department billing quotas and ledger integration.
               </p>
             </div>
           </div>

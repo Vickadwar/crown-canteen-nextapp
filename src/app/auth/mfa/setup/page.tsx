@@ -1,81 +1,154 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import { QrCode, ShieldCheck, ArrowRight, Copy, CheckCircle2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { ShieldCheck, ArrowRight, Copy, Check, Lock, Laptop, KeyRound, CheckCircle2, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Logo } from "@/components/ui/logo";
 
 export default function MFASetupPage() {
+  const [copied, setCopied] = useState(false);
+  const secretKey = "CRWN-8821-XKP9-77QA";
+  const otpAuthUrl = `otpauth://totp/CrownCanteen:admin@crownpaints.co.ke?secret=${secretKey.replace(/-/g, "")}&issuer=CrownCanteen`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(secretKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans overflow-hidden flex items-center justify-center p-4 selection:bg-primary selection:text-white">
-      {/* Background Orbs for Deep Immersion */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] size-[400px] bg-primary/20 blur-[100px] rounded-full mix-blend-multiply opacity-50 animate-pulse" />
-        <div className="absolute top-[40%] right-[-10%] size-[500px] bg-secondary/15 blur-[100px] rounded-full mix-blend-multiply opacity-40" />
-        <div className="absolute bottom-[-20%] left-[20%] size-[600px] bg-accent/20 blur-[100px] rounded-full mix-blend-multiply opacity-30 animate-pulse" style={{ animationDelay: "2s" }} />
+    <div className="min-h-screen w-full flex flex-col lg:grid lg:grid-cols-12 bg-slate-50/50 text-slate-900 font-sans selection:bg-emerald-600 selection:text-white antialiased">
+      {/* ── Left Side: Clean Architectural Context (7 Cols) ──────────────── */}
+      <div className="hidden lg:flex lg:col-span-7 relative flex-col justify-between p-8 xl:p-12 bg-white border-r border-slate-200/80 shadow-[inset_-1px_0_0_rgba(0,0,0,0.02)] overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.4]"
+          style={{
+            backgroundImage: "radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0)",
+            backgroundSize: "20px 20px",
+          }}
+        />
+
+        <div className="relative z-10">
+          <Logo href="/" iconSize="sm" subtitle="Security Protocol" />
+        </div>
+
+        <div className="relative z-10 my-auto max-w-lg space-y-5 py-4">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+              <ShieldCheck className="size-3.5" />
+              <span>Multi-Factor Authentication</span>
+            </div>
+
+            <h1 className="text-2xl xl:text-3xl font-black tracking-tight text-slate-900 leading-snug">
+              Secure Account <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
+                Identity Pairing.
+              </span>
+            </h1>
+
+            <p className="text-xs sm:text-[13px] text-slate-600 font-medium leading-relaxed">
+              MFA ensures that only verified kitchen managers and finance officers can approve supply requisitions, petty cash, and meal billing adjustments.
+            </p>
+          </div>
+
+          <div className="space-y-2.5 pt-1">
+            {[
+              { step: "01", title: "Open Authenticator App", desc: "Use Google Authenticator, Microsoft Authenticator, or Authy on your phone." },
+              { step: "02", title: "Scan the Dynamic QR", desc: "Point your camera at the real-time generated QR code on the right panel." },
+              { step: "03", title: "Verify 6-Digit Passcode", desc: "Enter your rotating 30-second security code to finalize device bonding." },
+            ].map((s, idx) => (
+              <div key={idx} className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="size-6 rounded-lg bg-emerald-600 text-white font-black text-[11px] flex items-center justify-center shrink-0">
+                  {s.step}
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">{s.title}</p>
+                  <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+          <p>© {new Date().getFullYear()} Crown Paints Kenya PLC</p>
+          <Link href="/auth/login" className="hover:text-emerald-700 transition-colors flex items-center gap-0.5">
+            <span>Back to Login</span>
+            <ArrowUpRight className="size-3" />
+          </Link>
+        </div>
       </div>
 
-      <div className="w-full max-w-5xl relative z-10 grid lg:grid-cols-2 gap-4 lg:gap-8 animate-in fade-in zoom-in-95 duration-700">
-         {/* --- Left Side: Info Panel --- */}
-         <div className="flex flex-col justify-between h-full bg-background/50 backdrop-blur-xl border border-white/20 p-8 md:p-10 rounded-[2rem] shadow-2xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute -top-32 -left-32 size-64 bg-accent/20 blur-[60px] rounded-full" />
-            
-            <div className="relative z-10">
-               <Badge className="bg-primary/20 text-primary border border-primary/30 mb-6 px-3 py-1 font-black uppercase tracking-widest text-[10px]">Security Protocol</Badge>
-               <h1 className="text-4xl lg:text-5xl font-black text-secondary mb-4 tracking-tighter leading-none">
-                  Setup <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent drop-shadow-sm">Multi-Factor.</span>
-               </h1>
-               <p className="text-muted-foreground text-sm font-medium leading-relaxed mb-8 max-w-sm">
-                  To protect the CrownCanteen ecosystem, we require MFA for all administrative and institutional accounts.
-               </p>
-               
-               <div className="space-y-4">
-                  {[
-                    { step: "01", text: "Download an authenticator app (e.g., Google Authenticator, Authy)." },
-                    { step: "02", text: "Scan the securely generated QR code on the right." },
-                    { step: "03", text: "Enter the verification code to finalize your setup." }
-                  ].map((s, i) => (
-                    <div key={i} className="flex gap-4 items-center p-3 bg-white/5 rounded-xl border border-white/10">
-                       <span className="text-primary font-black text-xl tracking-tighter bg-primary/10 size-8 flex items-center justify-center rounded-lg">{s.step}</span>
-                       <span className="text-muted-foreground font-medium text-sm leading-tight">{s.text}</span>
-                    </div>
-                  ))}
-               </div>
-            </div>
-            
-            <div className="relative z-10 text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-10 flex items-center gap-2">
-               <ShieldCheck size={14} className="text-primary" /> End-to-End Encrypted
-            </div>
-         </div>
+      {/* ── Right Side: Real QR Code Container & Action (5 Cols) ─────────── */}
+      <div className="lg:col-span-5 flex flex-col justify-between p-6 sm:p-8 xl:p-10 bg-slate-50/40 relative overflow-y-auto">
+        <div className="lg:hidden flex items-center justify-between mb-6 pb-3 border-b border-slate-200">
+          <Logo href="/" iconSize="sm" />
+          <Link href="/auth/login">
+            <Button size="sm" variant="ghost" className="text-xs font-bold h-7">
+              Sign In
+            </Button>
+          </Link>
+        </div>
 
-         {/* --- Right Side: QR Code Card --- */}
-         <div className="flex flex-col h-full">
-            <div className="bg-background/60 backdrop-blur-xl border border-white/20 p-8 md:p-10 rounded-[2rem] shadow-2xl relative overflow-hidden text-center flex flex-col items-center flex-1 justify-center">
-               <div className="absolute top-0 right-0 size-64 bg-primary/10 blur-[80px] rounded-full -z-10" />
-               
-               <div className="aspect-square w-full max-w-[240px] bg-white rounded-3xl mb-8 flex items-center justify-center p-6 relative group overflow-hidden shadow-inner border-4 border-white/5">
-                  <QrCode className="w-full h-full text-secondary opacity-90 group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-               </div>
-               
-               <div className="w-full mb-8 text-left">
-                  <p className="text-[11px] font-black text-secondary/60 mb-2 ml-1">Manual Secret Key</p>
-                  <div className="h-12 bg-white/5 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-between px-4 shadow-inner">
-                     <code className="font-black text-foreground tracking-widest text-sm">XJ42-9KLS-PR71</code>
-                     <Button variant="ghost" size="icon" className="text-primary hover:bg-white/10 h-8 w-8 rounded-lg">
-                        <Copy className="h-4 w-4" />
-                     </Button>
-                  </div>
-               </div>
-
-               <Link href="/auth/mfa/verify" className="w-full">
-                  <Button className="w-full h-12 bg-secondary hover:bg-secondary/90 text-primary-foreground rounded-xl font-black text-sm shadow-lg shadow-secondary/20 transition-all flex items-center justify-center gap-3 group hover:-translate-y-0.5">
-                     CONTINUE <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-               </Link>
+        <div className="my-auto max-w-sm w-full mx-auto space-y-4 text-center">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100/70 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+              <KeyRound className="size-2.5" /> Step 1 of 2
             </div>
-         </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Scan QR Code
+            </h2>
+            <p className="text-xs text-slate-500 font-medium">
+              Scan with your mobile authenticator to generate security tokens.
+            </p>
+          </div>
+
+          {/* Real High-Resolution QR Card */}
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center space-y-3.5">
+            <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-inner flex items-center justify-center">
+              <QRCodeSVG
+                value={otpAuthUrl}
+                size={170}
+                level="H"
+                includeMargin={false}
+                className="size-40 sm:size-44"
+              />
+            </div>
+
+            {/* Secret Key Box */}
+            <div className="w-full space-y-1 text-left">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Manual Secret Key:
+              </p>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono font-bold">
+                <span className="text-slate-800">{secretKey}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCopy}
+                  className="h-6 px-2 text-emerald-700 hover:bg-emerald-50 gap-1 text-[11px]"
+                >
+                  {copied ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Link */}
+          <Link href="/auth/mfa/verify" className="block">
+            <Button className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+              <span>CONTINUE TO VERIFICATION</span>
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </Link>
+        </div>
+
+        <div className="pt-4 border-t border-slate-200 text-center text-[11px] text-slate-500 font-medium">
+          Having trouble? Contact Canteen IT Support.
+        </div>
       </div>
     </div>
   );

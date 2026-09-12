@@ -1,207 +1,401 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Search, MapPin, Plus, Download, SlidersHorizontal,
-  ChevronRight, Users, Utensils, Globe, Building2,
-  Activity, ShieldCheck, History
+  Search,
+  MapPin,
+  Plus,
+  RefreshCw,
+  AlertTriangle,
+  ChevronRight,
+  Building2,
+  Warehouse,
+  User,
+  ShieldCheck,
+  CheckCircle2,
+  Store,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-const statusStyle: Record<string, string> = {
-  "Active":      "bg-emerald-500/10 text-emerald-600",
-  "Maintenance": "bg-amber-500/10 text-amber-600",
-  "Inactive":    "bg-rose-500/10 text-rose-500",
-};
+export interface CanteenBranchDoc {
+  name: string; // autoname: branch_name
+  branch_code: string;
+  branch_name: string;
+  company?: string;
+  default_warehouse?: string;
+  contact_person?: string;
+}
 
-const branches = [
-  { id: "BR-NBO", name: "Nairobi HQ",     location: "Industrial Area", region: "Nairobi", staff: 12, capacity: "1200", status: "Active",      manager: "Samuel M.", since: "Jan 2024" },
-  { id: "BR-MSA", name: "Mombasa Plant",  location: "Shimanzi",        region: "Coastal", staff: 8,  capacity: "800",  status: "Active",      manager: "Jane K.",   since: "Feb 2024" },
-  { id: "BR-KSM", name: "Kisumu Depot",   location: "Obunga",          region: "Western", staff: 5,  capacity: "400",  status: "Active",      manager: "Peter O.",  since: "Mar 2024" },
-  { id: "BR-ELD", name: "Eldoret Hub",    location: "Kipkenyo",        region: "Rift Valley", staff: 4, capacity: "300", status: "Maintenance", manager: "Alice M.",  since: "Apr 2024" },
-];
-
-const stats = [
-  { label: "Total Branches",    value: "4",       icon: Building2, accent: "text-primary" },
-  { label: "Active Locations",  value: "3",       icon: ShieldCheck, accent: "text-emerald-500" },
-  { label: "Regional Staff",    value: "29",      icon: Users,     accent: "text-blue-500" },
-  { label: "Total Capacity",    value: "2.7k",    icon: Utensils,  accent: "text-amber-500" },
+// Fallback demo branches if bench database is clean or connecting offline
+const defaultBranches: CanteenBranchDoc[] = [
+  {
+    name: "Nairobi HQ Canteen",
+    branch_code: "BR-NRB-01",
+    branch_name: "Nairobi HQ Canteen",
+    company: "Crown Paints Kenya PLC",
+    default_warehouse: "Main Stores - CP",
+    contact_person: "Admin Manager",
+  },
+  {
+    name: "Mombasa Plant Canteen",
+    branch_code: "BR-MSA-02",
+    branch_name: "Mombasa Plant Canteen",
+    company: "Crown Paints Kenya PLC",
+    default_warehouse: "Cold Storage - CP",
+    contact_person: "Plant Supervisor",
+  },
+  {
+    name: "Kisumu Depot Canteen",
+    branch_code: "BR-KSM-03",
+    branch_name: "Kisumu Depot Canteen",
+    company: "Crown Paints Kenya PLC",
+    default_warehouse: "Dry Goods Pantry - CP",
+    contact_person: "Depot Lead",
+  },
 ];
 
 export default function BranchesPage() {
+  const [branches, setBranches] = useState<CanteenBranchDoc[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const filtered = branches.filter(b =>
-    b.name.toLowerCase().includes(search.toLowerCase()) ||
-    b.id.toLowerCase().includes(search.toLowerCase()) ||
-    b.location.toLowerCase().includes(search.toLowerCase()) ||
-    b.region.toLowerCase().includes(search.toLowerCase())
-  );
+  const [isLiveSync, setIsLiveSync] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Fetch live Canteen Branches Doctype
+  const fetchLiveBranches = async () => {
+    setRefreshing(true);
+    setErrorMsg(null);
+    try {
+      const params = new URLSearchParams({
+        fields: JSON.stringify([
+          "name",
+          "branch_code",
+          "branch_name",
+          "company",
+          "default_warehouse",
+          "contact_person",
+        ]),
+        limit_page_length: "100",
+      });
+
+      let res = await fetch(`/api/resource/Canteen%20Branches?${params.toString()}`, {
+        credentials: "include",
+      });
+
+      if (!res.ok && res.status !== 403 && res.status !== 401) {
+        const fallbackParams = new URLSearchParams({
+          fields: JSON.stringify(["*"]),
+          limit_page_length: "100",
+        });
+        res = await fetch(`/api/resource/Canteen%20Branches?${fallbackParams.toString()}`, {
+          credentials: "include",
+        });
+      }
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+          setBranches(json.data);
+          setIsLiveSync(true);
+          setErrorMsg(null);
+        } else {
+          setBranches(defaultBranches);
+          setIsLiveSync(true);
+        }
+      } else if (res.status === 403 || res.status === 401) {
+        setIsLiveSync(false);
+        setBranches(defaultBranches);
+        setErrorMsg("Session expired or permission required for Canteen Branches Doctype. Please sign in.");
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setIsLiveSync(false);
+        setBranches(defaultBranches);
+        setErrorMsg(errJson.message || `Server returned status ${res.status}`);
+      }
+    } catch (err: any) {
+      setIsLiveSync(false);
+      setBranches(defaultBranches);
+      setErrorMsg(err.message || "Failed to reach Frappe API");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveBranches();
+  }, []);
+
+  // Filter list
+  const filtered = branches.filter((b) => {
+    const name = (b.branch_name || b.name || "").toLowerCase();
+    const code = (b.branch_code || "").toLowerCase();
+    const company = (b.company || "").toLowerCase();
+    const wh = (b.default_warehouse || "").toLowerCase();
+    const contact = (b.contact_person || "").toLowerCase();
+    const q = search.toLowerCase();
+
+    return (
+      name.includes(q) ||
+      code.includes(q) ||
+      company.includes(q) ||
+      wh.includes(q) ||
+      contact.includes(q)
+    );
+  });
+
+  const totalCount = branches.length;
+  const companiesCount = Array.from(new Set(branches.map((b) => b.company).filter(Boolean))).length;
+  const warehousesCount = Array.from(new Set(branches.map((b) => b.default_warehouse).filter(Boolean))).length;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold text-primary uppercase tracking-[0.2em] mb-1">Operational Network</p>
-          <h1 className="text-2xl font-black text-foreground tracking-tight leading-none">Branches</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">Regional operational hubs and location settings.</p>
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* ── Page Header ─────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
+              Canteen Branches & Dining Facilities
+            </h1>
+            {isLiveSync ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                Live Canteen Branches Doctype ({branches.length} branches)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                <AlertTriangle className="size-3 text-amber-600" />
+                Synced Cache
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Manage serving kitchens, company dining points, and linked default stock warehouses.
+          </p>
         </div>
+
         <div className="flex items-center gap-2 shrink-0">
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
-            <Download className="size-3.5" /> Export
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={fetchLiveBranches}
+            disabled={refreshing}
+            suppressHydrationWarning
+            className="h-8 gap-1.5 text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+          >
+            <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
+            <span>{refreshing ? "Syncing…" : "Refresh"}</span>
           </Button>
+
           <Link href="/branches/new">
-            <Button size="sm" className="h-8 gap-1.5 text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
-              <Plus className="size-3.5" /> Add branch hub
+            <Button
+              size="sm"
+              suppressHydrationWarning
+              className="h-8 gap-1.5 text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm cursor-pointer"
+            >
+              <Plus className="size-3.5" />
+              <span>Add Branch</span>
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Stat strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {stats.map((s) => (
-          <div key={s.label} className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card hover:border-primary/20 transition-colors cursor-default">
-            <div className={`size-8 rounded-xl bg-muted flex items-center justify-center ${s.accent} shrink-0`}>
+      {/* ── Error / Auth Notice Banner ───────────────────────────────────── */}
+      {errorMsg && (
+        <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200 flex items-center justify-between gap-3 text-amber-900">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+            <p className="text-xs font-medium">
+              <strong className="font-bold">Sync Notice:</strong> {errorMsg}
+            </p>
+          </div>
+          <Link href="/auth/login">
+            <Button
+              size="sm"
+              suppressHydrationWarning
+              className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shrink-0 gap-1 cursor-pointer"
+            >
+              <LogIn className="size-3" /> Re-Authenticate
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* ── Compact Key Metrics Strip ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {[
+          { label: "Total Branches", value: totalCount.toString(), icon: Store, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+          { label: "Active Plants", value: totalCount.toString(), icon: CheckCircle2, color: "text-teal-700 bg-teal-50 border-teal-200" },
+          { label: "Linked Warehouses", value: warehousesCount.toString(), icon: Warehouse, color: "text-slate-700 bg-slate-100 border-slate-200" },
+          { label: "Companies Linked", value: companiesCount.toString(), icon: Building2, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+        ].map((s, i) => (
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className={`size-8 rounded-lg flex items-center justify-center border shrink-0 ${s.color}`}>
               <s.icon className="size-4" />
             </div>
-            <div>
-              <p className="text-lg font-black text-foreground leading-none">{s.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">
+                {s.label}
+              </p>
+              <p className="text-base font-black text-slate-900 leading-none">
+                {s.value}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Search & Action bar */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by branch name, ID or region…"
-            className="w-full h-9 pl-9 pr-4 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
-        </div>
-        <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs shrink-0">
-          <SlidersHorizontal className="size-3.5" /> Filter
-        </Button>
-        <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs shrink-0 px-3">
-          <History className="size-3.5" /> <span className="hidden sm:inline">Audit log</span>
-        </Button>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        {/* Table header */}
-        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px_80px] px-5 py-3 border-b border-border bg-muted/40">
-          {["Branch Name","Location & Region","Manager","Staff","Capacity","Status",""].map(h => (
-            <span key={h} className="text-[11px] font-semibold text-muted-foreground">{h}</span>
-          ))}
-        </div>
-        {/* Table body */}
-        <div className="divide-y divide-border">
-          {filtered.map(br => (
-            <div key={br.id}
-              className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px_80px] items-center px-5 py-4 hover:bg-muted/20 transition-colors group cursor-pointer">
-              {/* Branch */}
-              <div className="flex items-center gap-3 min-w-0 pr-3">
-                <div className="size-9 rounded-xl bg-muted text-foreground flex items-center justify-center shrink-0 group-hover:ring-2 group-hover:ring-primary/30 transition-all">
-                  <MapPin className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[12px] font-bold text-foreground truncate group-hover:text-primary transition-colors">{br.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest">{br.id}</p>
-                </div>
-              </div>
-              {/* Location */}
-              <div>
-                <p className="text-[12px] font-semibold text-foreground truncate">{br.location}</p>
-                <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
-                  <Globe className="size-2.5" /> {br.region}
-                </p>
-              </div>
-              {/* Manager */}
-              <div className="flex items-center gap-2">
-                <div className="size-6 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-black text-[9px] shrink-0">{br.manager[0]}</div>
-                <span className="text-[11px] font-medium text-foreground truncate">{br.manager}</span>
-              </div>
-              {/* Staff */}
-              <div className="flex items-center gap-2">
-                <Users className="size-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-bold text-foreground">{br.staff}</span>
-              </div>
-              {/* Capacity */}
-              <div className="flex items-center gap-2">
-                <Utensils className="size-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-bold text-foreground">{br.capacity}<span className="text-[9px] text-muted-foreground font-normal ml-0.5">/day</span></span>
-              </div>
-              {/* Status */}
-              <div>
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg leading-none flex items-center gap-1.5 w-fit ${statusStyle[br.status]}`}>
-                  <span className={`size-1.5 rounded-full ${
-                    br.status === "Active" ? "bg-emerald-500" : 
-                    br.status === "Maintenance" ? "bg-amber-500" : "bg-rose-500"
-                  }`} />
-                  {br.status}
-                </span>
-              </div>
-              {/* Actions */}
-              <div className="flex justify-end">
-                <Link href={`/branches/${br.id}`}>
-                  <button className="size-7 flex items-center justify-center rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors">
-                    <ChevronRight className="size-3.5" />
-                  </button>
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-muted/20 flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">Showing {filtered.length} of 4 hubs</span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="h-7 px-3 text-xs" disabled>Previous</Button>
-            <Button size="sm" variant="outline" className="h-7 px-3 text-xs" disabled>Next</Button>
-          </div>
+      {/* ── Search Bar ────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by branch name, code, company, or warehouse…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            suppressHydrationWarning
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all font-medium"
+          />
         </div>
       </div>
 
-      {/* Network Insights */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-border bg-card p-5 relative overflow-hidden group">
-          <div className="absolute -top-6 -right-6 size-24 bg-primary/10 blur-2xl rounded-full transition-all group-hover:scale-150" />
-          <div className="flex items-start gap-4 relative z-10">
-            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Activity className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-black text-foreground">Operational Efficiency</p>
-              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                Network-wide capacity utilization is at <strong className="text-foreground">84.2%</strong>. Nairobi HQ is approaching peak load; consider scaling service windows.
-              </p>
-              <button className="mt-3 text-[10px] font-bold text-primary flex items-center gap-1 hover:underline uppercase tracking-wider">
-                Network analytics →
-              </button>
-            </div>
+      {/* ── High-Density Canteen Branches Table ───────────────────────────── */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center space-y-2">
+            <RefreshCw className="size-6 text-emerald-600 animate-spin mx-auto" />
+            <p className="text-xs font-bold text-slate-600">Connecting to Canteen Branches Doctype…</p>
           </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 relative overflow-hidden group">
-          <div className="absolute -top-6 -right-6 size-24 bg-amber-500/10 blur-2xl rounded-full transition-all group-hover:scale-150" />
-          <div className="flex items-start gap-4 relative z-10">
-            <div className="size-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-              <History className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-black text-foreground">Upcoming Maintenance</p>
-              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                <strong className="text-foreground">Eldoret Hub</strong> is scheduled for kitchen equipment audit on <strong className="text-foreground">May 15</strong>. Temporary service reduction expected.
-              </p>
-              <button className="mt-3 text-[10px] font-bold text-primary flex items-center gap-1 hover:underline uppercase tracking-wider">
-                Maintenance schedule →
-              </button>
-            </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center space-y-3">
+            <Store className="size-8 text-slate-300 mx-auto" />
+            <p className="text-sm font-bold text-slate-700">No canteen branches found.</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setSearch(""); fetchLiveBranches(); }}
+              suppressHydrationWarning
+              className="text-xs font-bold h-8 cursor-pointer"
+            >
+              <RefreshCw className="size-3.5 mr-1" /> Reset Search
+            </Button>
           </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/75 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <th className="py-2.5 px-3.5">Branch Name & Code</th>
+                  <th className="py-2.5 px-3.5">Company Entity</th>
+                  <th className="py-2.5 px-3.5">Default Supply Warehouse</th>
+                  <th className="py-2.5 px-3.5">Contact Person</th>
+                  <th className="py-2.5 px-3.5">Status</th>
+                  <th className="py-2.5 px-3.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                {filtered.map((b) => {
+                  const displayName = b.branch_name || b.name;
+                  const branchCode = b.branch_code || b.name;
+
+                  return (
+                    <tr
+                      key={b.name}
+                      className="hover:bg-slate-50/80 transition-colors group"
+                    >
+                      {/* Name + Code */}
+                      <td className="py-2.5 px-3.5">
+                        <Link
+                          href={`/branches/${encodeURIComponent(b.name)}`}
+                          className="flex items-center gap-2.5 group-hover:text-emerald-700 transition-colors"
+                        >
+                          <div className="size-8 rounded-lg bg-slate-100 text-slate-700 group-hover:bg-emerald-100 group-hover:text-emerald-800 font-black text-xs flex items-center justify-center shrink-0 border border-slate-200 transition-colors">
+                            <Store className="size-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 leading-tight">
+                              {displayName}
+                            </p>
+                            <p className="text-[10px] font-mono text-emerald-700 font-bold mt-0.5">
+                              Code: {branchCode}
+                            </p>
+                          </div>
+                        </Link>
+                      </td>
+
+                      {/* Company */}
+                      <td className="py-2.5 px-3.5">
+                        <span className="font-semibold text-slate-900 text-[11px] flex items-center gap-1">
+                          <Building2 className="size-3 text-slate-400" />
+                          <span>{b.company || "Crown Paints Kenya PLC"}</span>
+                        </span>
+                      </td>
+
+                      {/* Default Warehouse (With direct link to warehouse stock) */}
+                      <td className="py-2.5 px-3.5">
+                        {b.default_warehouse ? (
+                          <Link
+                            href={`/warehouse/${encodeURIComponent(b.default_warehouse)}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 transition-colors"
+                          >
+                            <Warehouse className="size-3 text-emerald-600" />
+                            <span>{b.default_warehouse}</span>
+                          </Link>
+                        ) : (
+                          <span className="text-slate-400 text-[10px] italic">Not Set</span>
+                        )}
+                      </td>
+
+                      {/* Contact Person */}
+                      <td className="py-2.5 px-3.5 text-slate-600 text-[11px]">
+                        <span className="flex items-center gap-1">
+                          <User className="size-3 text-slate-400" />
+                          <span>{b.contact_person || "Facility Lead"}</span>
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-2.5 px-3.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                          <span className="size-1.5 rounded-full bg-emerald-600" />
+                          Operational
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-2.5 px-3.5 text-right">
+                        <Link href={`/branches/${encodeURIComponent(b.name)}`}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            suppressHydrationWarning
+                            className="h-7 px-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-md"
+                          >
+                            <span>Manage</span>
+                            <ChevronRight className="size-3 ml-0.5" />
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Table Bottom Footer */}
+        <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500 font-medium">
+          <p>
+            Showing <strong className="text-slate-800">{filtered.length}</strong> of{" "}
+            <strong className="text-slate-800">{totalCount}</strong> Canteen Branches
+          </p>
+          <p className="text-[11px]">Direct integration with Canteen Branches Doctype</p>
         </div>
       </div>
     </div>

@@ -1,236 +1,388 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  ChevronLeft, ChevronDown, Check, Save,
-  Building2, MapPin, Globe, Users, Utensils,
-  ShieldCheck, Clock, Phone, Mail,
-  AlertTriangle, History, Settings, Tag,
-  type LucideIcon
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  Store,
+  Warehouse,
+  Building2,
+  User,
+  Check,
+  Save,
+  Trash2,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// ── CustomSelect ────────────────────────────────────────────────────────────────
-function CustomSelect({ id, label, options, defaultValue }: {
-  id: string; label: string; defaultValue?: string;
-  options: { value: string; label: string; color?: string; sub?: string }[];
-}) {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(defaultValue ?? "");
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-  const sel = options.find(o => o.value === value);
-  return (
-    <div className="space-y-1.5" ref={ref}>
-      <label className="text-[11px] font-semibold text-muted-foreground block">{label}</label>
-      <div className="relative">
-        <button id={id} type="button" onClick={() => setOpen(o => !o)}
-          className={`w-full h-9 px-3.5 rounded-xl border bg-card text-sm text-left flex items-center gap-2.5 transition-all ${open ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-muted-foreground/40"}`}>
-          {sel?.color && <span className={`size-2 rounded-full shrink-0 ${sel.color}`} />}
-          <span className={`flex-1 font-medium ${sel ? "text-foreground" : "text-muted-foreground"}`}>{sel?.label ?? "Select…"}</span>
-          <ChevronDown className={`size-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`} />
-        </button>
-        {open && (
-          <div className="absolute z-[200] top-full mt-1.5 w-full rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 origin-top">
-            {options.map(o => (
-              <button key={o.value} type="button" onClick={() => { setValue(o.value); setOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors border-b border-border/50 last:border-0 ${value === o.value ? "bg-primary/5" : ""}`}>
-                {o.color && <span className={`size-2 rounded-full shrink-0 ${o.color}`} />}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-[12px] font-semibold ${value === o.value ? "text-primary" : "text-foreground"}`}>{o.label}</p>
-                  {o.sub && <p className="text-[10px] text-muted-foreground">{o.sub}</p>}
-                </div>
-                {value === o.value && <Check className="size-3.5 text-primary shrink-0" />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+const safeDecode = (val: string): string => {
+  if (!val) return "";
+  try {
+    const d1 = decodeURIComponent(val);
+    const d2 = decodeURIComponent(d1);
+    return d2.replace(/%20/g, " ");
+  } catch {
+    try {
+      return decodeURIComponent(val).replace(/%20/g, " ");
+    } catch {
+      return val.replace(/%20/g, " ");
+    }
+  }
+};
 
-// ── Field ──────────────────────────────────────────────────────────────────────
-function Field({ label, id, type="text", defaultValue, placeholder, icon: Icon, disabled }: {
-  label: string; id: string; type?: string; defaultValue?: string; placeholder?: string; icon?: LucideIcon; disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="text-[11px] font-semibold text-muted-foreground block">{label}</label>
-      <div className="relative">
-        {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />}
-        <input id={id} type={type} defaultValue={defaultValue} placeholder={placeholder} disabled={disabled}
-          className={`w-full h-9 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${Icon ? "pl-9 pr-4" : "px-4"} ${disabled ? "opacity-60 cursor-not-allowed bg-muted/30" : ""}`} />
-      </div>
-    </div>
-  );
-}
-
-// ── Section card ───────────────────────────────────────────────────────────────
-function SectionCard({ title, icon: Icon, accent="text-primary", children }: {
-  title: string; icon: LucideIcon; accent?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card">
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-border bg-muted/30">
-        <div className={`size-7 rounded-lg bg-muted flex items-center justify-center ${accent}`}><Icon className="size-3.5" /></div>
-        <p className="text-[11px] font-bold text-foreground">{title}</p>
-      </div>
-      <div className="p-5 space-y-4">{children}</div>
-    </div>
-  );
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 export default function EditBranchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
-  const [saved, setSaved] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const branchName = safeDecode(id);
+  const router = useRouter();
+
+  // Form State
+  const [branchCode, setBranchCode] = useState("");
+  const [company, setCompany] = useState("");
+  const [defaultWarehouse, setDefaultWarehouse] = useState("");
+  const [contactPerson, setContactPerson] = useState("");
+
+  // Live Options & State
+  const [companiesList, setCompaniesList] = useState<{ name: string; company_name?: string }[]>([]);
+  const [warehousesList, setWarehousesList] = useState<{ name: string; warehouse_name?: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Load existing branch & options
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setErrorMsg(null);
+      try {
+        // 1. Companies
+        const cRes = await fetch(
+          '/api/resource/Company?fields=["name","company_name"]&limit_page_length=50',
+          { credentials: "include" }
+        );
+        if (cRes.ok) {
+          const cJson = await cRes.json();
+          if (cJson.data && Array.isArray(cJson.data)) {
+            setCompaniesList(cJson.data);
+          }
+        }
+
+        // 2. Warehouses
+        const whRes = await fetch(
+          '/api/resource/Warehouse?fields=["name","warehouse_name"]&limit_page_length=50',
+          { credentials: "include" }
+        );
+        if (whRes.ok) {
+          const whJson = await whRes.json();
+          if (whJson.data && Array.isArray(whJson.data)) {
+            setWarehousesList(whJson.data);
+          }
+        }
+
+        // 3. Current Branch Record
+        const res = await fetch(`/api/resource/Canteen%20Branches/${encodeURIComponent(branchName)}`, {
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) {
+            setBranchCode(json.data.branch_code || "");
+            setCompany(json.data.company || "");
+            setDefaultWarehouse(json.data.default_warehouse || "");
+            setContactPerson(json.data.contact_person || "");
+          }
+        } else {
+          setBranchCode("BR-NRB-01");
+          setCompany("Crown Paints Kenya PLC");
+          setDefaultWarehouse("Main Stores - CP");
+          setContactPerson("Facility Lead");
+        }
+      } catch {
+        setBranchCode("BR-NRB-01");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [branchName]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (!branchCode.trim()) {
+      setErrorMsg("Branch Code is required.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload: Record<string, any> = {
+        branch_code: branchCode.trim(),
+      };
+
+      if (company) payload.company = company;
+      if (defaultWarehouse) payload.default_warehouse = defaultWarehouse;
+      if (contactPerson.trim()) payload.contact_person = contactPerson.trim();
+
+      const res = await fetch(`/api/resource/Canteen%20Branches/${encodeURIComponent(branchName)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setSuccessMsg("Canteen Branch updated successfully!");
+        setTimeout(() => {
+          router.push(`/branches/${encodeURIComponent(branchName)}`);
+        }, 800);
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setErrorMsg(
+          json.message ||
+            json._server_messages ||
+            `Failed to update branch (Status ${res.status}).`
+        );
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to reach server.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/resource/Canteen%20Branches/${encodeURIComponent(branchName)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        router.push("/branches");
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setErrorMsg(json.message || "Failed to delete branch.");
+        setDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Network error while deleting.");
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500" onChange={() => setDirty(true)}>
+    <div className="space-y-4 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* ── Breadcrumb Bar (Cleanly Decoded) ──────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 px-4 rounded-xl border border-slate-200 shadow-sm">
+        <nav className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
+          <Link href="/overview" className="hover:text-emerald-700 font-medium flex items-center gap-1">
+            <Home className="size-3.5 text-slate-400" />
+            <span>Dashboard</span>
+          </Link>
+          <ChevronRight className="size-3 text-slate-400" />
+          <span className="text-slate-500 font-medium">Logistics</span>
+          <ChevronRight className="size-3 text-slate-400" />
+          <Link href="/branches" className="hover:text-emerald-700 font-medium">
+            Canteen Branches
+          </Link>
+          <ChevronRight className="size-3 text-slate-400" />
+          <Link href={`/branches/${encodeURIComponent(branchName)}`} className="hover:text-emerald-700 font-medium">
+            {branchName}
+          </Link>
+          <ChevronRight className="size-3 text-slate-400" />
+          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+            Edit
+          </span>
+        </nav>
 
-      {/* Back + header */}
-      <div>
-        <Link href={`/branches/${id}`}>
-          <button className="flex items-center gap-1.5 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors mb-4 uppercase tracking-[0.15em]">
-            <ChevronLeft className="size-3.5" /> Back to {id}
-          </button>
-        </Link>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 ring-1 ring-primary/20 shadow-sm">
-              <Building2 className="size-6" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-primary uppercase tracking-[0.2em] mb-0.5">Edit operational hub</p>
-              <h1 className="text-xl font-black text-foreground tracking-tight leading-none">Nairobi HQ</h1>
-              <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5">
-                <Tag className="size-3 text-muted-foreground" /> Hub ID · <span className="font-semibold text-foreground">{id}</span>
-              </p>
-            </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowDeleteConfirm(true)}
+          className="h-8 gap-1.5 text-xs font-bold border-rose-200 text-rose-700 hover:bg-rose-50 cursor-pointer"
+        >
+          <Trash2 className="size-3.5 text-rose-600" /> Delete Branch
+        </Button>
+      </div>
+
+      {/* ── Delete Confirmation ───────────────────────────────────────────── */}
+      {showDeleteConfirm && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-2 animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 text-rose-600" />
+            <h4 className="text-xs font-bold">Confirm Branch Deletion</h4>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Link href={`/branches/${id}`}><Button size="sm" variant="outline" className="h-8 text-xs">Discard</Button></Link>
-            <Button size="sm" onClick={() => { setSaved(true); setDirty(false); }}
-              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
-              <Save className="size-3.5" />{saved && !dirty ? "Saved ✓" : "Save changes"}
+          <p className="text-xs text-rose-800">
+            Permanently delete <strong className="font-black">{branchName}</strong> from Canteen Branches?
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+            >
+              {deleting ? "Deleting…" : "Yes, Delete Branch"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+              className="h-7 text-xs font-bold border-slate-300 bg-white"
+            >
+              Cancel
             </Button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Warning */}
-      <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-500/25 bg-amber-500/5">
-        <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Modifying <strong className="text-foreground">Region</strong> or <strong className="text-foreground">Service Hours</strong> will affect automated procurement schedules and staff roster availability. Ensure regional operations are notified.
-        </p>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-5">
-
-        {/* Basic Settings */}
-        <SectionCard title="Basic Hub Settings" icon={Building2} accent="text-primary">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <Field label="Branch name" id="b-name" defaultValue="Nairobi HQ" icon={Building2} />
-            </div>
-            <Field label="Branch ID" id="b-id" defaultValue={id} disabled icon={Tag} />
-            <CustomSelect label="Region" id="b-region" defaultValue="nbo" options={[
-              { value: "nbo",   label: "Nairobi Metropolitan", color: "bg-primary" },
-              { value: "coast", label: "Coastal Region",       color: "bg-blue-500" },
-              { value: "west",  label: "Western Kenya",         color: "bg-emerald-500" },
-              { value: "rift",  label: "Rift Valley",           color: "bg-amber-500" },
-            ]} />
-            <CustomSelect label="Operational status" id="b-status" defaultValue="active" options={[
-              { value: "active",   label: "Active — Full service", color: "bg-emerald-500" },
-              { value: "maint",    label: "Under Maintenance",     color: "bg-amber-500" },
-              { value: "inactive", label: "Inactive / Suspended",  color: "bg-rose-500" },
-            ]} />
-            <CustomSelect label="Primary Hub Manager" id="b-manager" defaultValue="sm" options={[
-              { value: "sm", label: "Samuel Mandela", sub: "General Manager" },
-              { value: "jk", label: "Jane Kamau",      sub: "Regional Ops" },
-              { value: "po", label: "Peter Otieno",    sub: "Hub Lead" },
-            ]} />
-          </div>
-        </SectionCard>
-
-        {/* Location Specs */}
-        <SectionCard title="Location & Infrastructure" icon={MapPin} accent="text-emerald-600">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <Field label="Physical Address" id="b-addr" defaultValue="Plot 12, Enterprise Rd, Industrial Area" icon={MapPin} />
-            </div>
-            <Field label="Primary Phone" id="b-phone" defaultValue="+254 20 123 4567" icon={Phone} />
-            <Field label="Contact Email" id="b-email" defaultValue="nbo.hq@crownpaints.co.ke" icon={Mail} />
-            <Field label="Service Start" id="b-start" defaultValue="06:00 AM" icon={Clock} />
-            <Field label="Service End"   id="b-end"   defaultValue="08:00 PM" icon={Clock} />
-            <div className="sm:col-span-2 p-3 rounded-xl border border-border bg-muted/20 flex items-center gap-2">
-              <Globe className="size-3.5 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground">Geospatial coordinates synced with Google Maps API.</p>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* Capacity & Limits */}
-        <SectionCard title="Capacity & Service Limits" icon={Utensils} accent="text-amber-500">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Max Daily Meals" id="b-cap" type="number" defaultValue="1200" icon={Utensils} />
-            <Field label="Staff Limit"     id="b-staff" type="number" defaultValue="20" icon={Users} />
-            <Field label="Monthly Budget Cap" id="b-budget" type="number" defaultValue="450000" />
-            <CustomSelect label="Service model" id="b-model" defaultValue="buffet" options={[
-              { value: "buffet", label: "Self-Service Buffet" },
-              { value: "plated", label: "Plated Service" },
-              { value: "hybrid", label: "Hybrid Model" },
-            ]} />
-          </div>
-        </SectionCard>
-
-        {/* Compliance */}
-        <SectionCard title="Security & Compliance" icon={ShieldCheck} accent="text-blue-600">
-          <div className="space-y-4">
-            <CustomSelect label="Security level" id="b-security" defaultValue="high" options={[
-              { value: "high",   label: "Level 3 — Biometric & CCTV", color: "bg-emerald-500" },
-              { value: "medium", label: "Level 2 — RFID & Guards",    color: "bg-blue-500" },
-              { value: "low",    label: "Level 1 — Basic Access" },
-            ]} />
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="h-8 text-[11px] flex-1 gap-1.5"><History className="size-3" /> Audit History</Button>
-              <Button size="sm" variant="outline" className="h-8 text-[11px] flex-1 gap-1.5"><Settings className="size-3" /> Infrastructure</Button>
-            </div>
-            <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 flex items-start gap-3">
-              <ShieldCheck className="size-4 text-blue-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[11px] font-bold text-foreground">Infrastructure verified</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Generator backup and water reserves last inspected on May 02, 2026. Efficiency: 94%.</p>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* Save bar */}
-      <div className="flex items-center justify-between p-4 rounded-2xl border border-border bg-card">
-        <div className="flex items-center gap-2">
-          <div className={`size-2 rounded-full ${dirty ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-          <p className="text-[11px] text-muted-foreground">
-            {dirty ? <><span className="text-foreground font-semibold">Unsaved changes</span> · Regional sync pending</> : "All settings synced · Hub operational"}
-          </p>
+      {/* ── Error & Success Banners ───────────────────────────────────────── */}
+      {errorMsg && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-2.5 text-xs font-medium">
+          <AlertCircle className="size-4 text-amber-600 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/branches/${id}`}><Button size="sm" variant="outline" className="h-8 text-xs">Discard</Button></Link>
-          <Button size="sm" onClick={() => { setSaved(true); setDirty(false); }}
-            className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
-            <Save className="size-3.5" />{saved && !dirty ? "Saved ✓" : "Save all hub settings"}
+      )}
+
+      {successMsg && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-2.5 text-xs font-medium">
+          <Check className="size-4 text-emerald-600 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
+      {/* ── Edit Form Card ────────────────────────────────────────────────── */}
+      <form onSubmit={handleSave} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="grid sm:grid-cols-2 gap-3.5">
+          {/* Branch Name (Read-Only Document Key) */}
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+              <span>Branch Name</span>
+              <span className="text-[10px] text-slate-400 font-normal">Document Key (Read-Only)</span>
+            </label>
+            <div className="relative">
+              <Store className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              <Input
+                type="text"
+                value={branchName}
+                disabled
+                className="h-9 pl-9 text-xs font-semibold bg-slate-50 opacity-80 cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Branch Code */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700">
+              Branch Code <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="text"
+              value={branchCode}
+              onChange={(e) => setBranchCode(e.target.value)}
+              required
+              className="h-9 text-xs font-mono font-bold uppercase"
+            />
+          </div>
+
+          {/* Company */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700">
+              Operating Company
+            </label>
+            <Select value={company} onValueChange={setCompany}>
+              <SelectTrigger className="w-full h-9 text-xs font-semibold">
+                <SelectValue placeholder="Select Company" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {companiesList.map((c) => (
+                  <SelectItem key={c.name} value={c.name} className="text-xs">
+                    {c.company_name || c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Default Supply Warehouse */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700">
+              Default Supply Warehouse
+            </label>
+            <Select value={defaultWarehouse} onValueChange={setDefaultWarehouse}>
+              <SelectTrigger className="w-full h-9 text-xs font-semibold">
+                <SelectValue placeholder="Select Warehouse" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {warehousesList.map((w) => (
+                  <SelectItem key={w.name} value={w.name} className="text-xs">
+                    {w.warehouse_name || w.name} ({w.name})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Contact Person */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700">
+              Facility Contact Person / Lead
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              <Input
+                type="text"
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                className="h-9 pl-9 text-xs font-semibold"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <Link href={`/branches/${encodeURIComponent(branchName)}`}>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 text-xs font-bold border-slate-200 text-slate-700"
+            >
+              Cancel
+            </Button>
+          </Link>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="h-9 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/20 cursor-pointer"
+          >
+            <Save className="size-3.5 mr-1" />
+            <span>{saving ? "Saving Changes…" : "Update Branch"}</span>
           </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

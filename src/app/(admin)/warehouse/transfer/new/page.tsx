@@ -1,309 +1,422 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronLeft, ChevronDown, Check, Save,
-  ArrowLeftRight, MapPin, User,
-  FileText, Plus, X, Trash2, ArrowRight,
-  AlertCircle, Sparkles, Building, Box, Shield,
-  Warehouse, Activity, ChevronRight
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  ArrowLeftRight,
+  Warehouse,
+  Package,
+  Plus,
+  Trash2,
+  Save,
+  Check,
+  AlertCircle,
+  Sparkles,
+  Calendar,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// ── Custom Select (Strict Pattern) ─────────────────────────────────────────────
+interface TransferItemRow {
+  item_code: string;
+  qty: number;
+  uom: string;
+}
 
-function CustomSelect({
-  id, label, options, required, placeholder, value, onChange
-}: {
-  id: string; label: string; options: { value: string; label: string; color?: string; sub?: string }[];
-  required?: boolean; placeholder?: string; value: string; onChange: (v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+function StockTransferForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialSource = searchParams.get("source") || "";
 
+  const [fromWarehouse, setFromWarehouse] = useState(initialSource);
+  const [toWarehouse, setToWarehouse] = useState("");
+  const [postingDate, setPostingDate] = useState(new Date().toISOString().split("T")[0]);
+  const [remarks, setRemarks] = useState("Inter-warehouse transfer between kitchen storage nodes");
+  const [items, setItems] = useState<TransferItemRow[]>([
+    { item_code: "", qty: 1, uom: "Kg" },
+  ]);
+
+  const [warehousesList, setWarehousesList] = useState<{ name: string; warehouse_name?: string }[]>([]);
+  const [itemsList, setItemsList] = useState<{ name: string; item_name?: string; stock_uom?: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Load live Warehouses & Items
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const loadOptions = async () => {
+      try {
+        const whRes = await fetch(
+          '/api/resource/Warehouse?fields=["name","warehouse_name"]&limit_page_length=50',
+          { credentials: "include" }
+        );
+        if (whRes.ok) {
+          const json = await whRes.json();
+          if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+            setWarehousesList(json.data);
+            if (!initialSource) {
+              setFromWarehouse(json.data[0].name);
+            }
+            if (json.data.length > 1) {
+              setToWarehouse(json.data[1].name);
+            } else {
+              setToWarehouse(json.data[0].name);
+            }
+          }
+        }
+
+        const itemRes = await fetch(
+          '/api/resource/Item?fields=["name","item_name","stock_uom"]&limit_page_length=100',
+          { credentials: "include" }
+        );
+        if (itemRes.ok) {
+          const iJson = await itemRes.json();
+          if (iJson.data && Array.isArray(iJson.data) && iJson.data.length > 0) {
+            setItemsList(iJson.data);
+            setItems([{ item_code: iJson.data[0].name, qty: 1, uom: iJson.data[0].stock_uom || "Kg" }]);
+          }
+        }
+      } catch {
+        setWarehousesList([
+          { name: "Main Stores - CP", warehouse_name: "Main Kitchen Stores" },
+          { name: "Cold Storage - CP", warehouse_name: "Cold Storage Room" },
+        ]);
+        if (!initialSource) setFromWarehouse("Main Stores - CP");
+        setToWarehouse("Cold Storage - CP");
+      }
+    };
+
+    loadOptions();
+  }, [initialSource]);
+
+  const handleAddItem = () => {
+    const firstItem = itemsList[0];
+    setItems([
+      ...items,
+      {
+        item_code: firstItem ? firstItem.name : "",
+        qty: 1,
+        uom: firstItem?.stock_uom || "Kg",
+      },
+    ]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (items.length <= 1) return;
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleItemCodeChange = (index: number, code: string) => {
+    const selected = itemsList.find((i) => i.name === code);
+    const updated = [...items];
+    updated[index] = {
+      ...updated[index],
+      item_code: code,
+      uom: selected?.stock_uom || updated[index].uom,
+    };
+    setItems(updated);
+  };
+
+  const handleQtyChange = (index: number, val: number) => {
+    const updated = [...items];
+    updated[index] = { ...updated[index], qty: val };
+    setItems(updated);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (!fromWarehouse || !toWarehouse) {
+      setErrorMsg("Both Source and Target Warehouses are required.");
+      return;
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
-  const selected = options.find((o) => o.value === value);
+    if (fromWarehouse === toWarehouse) {
+      setErrorMsg("Source and Target Warehouses must be different.");
+      return;
+    }
 
-  return (
-    <div className="space-y-1.5" ref={ref}>
-      <label htmlFor={id} className="text-[11px] font-semibold text-muted-foreground block">
-        {label} {required && <span className="text-primary">*</span>}
-      </label>
-      <div className="relative">
-        <button
-          id={id} type="button" onClick={() => setOpen((o) => !o)}
-          className={`w-full h-9 px-3.5 pr-9 rounded-xl border bg-card text-sm text-left flex items-center transition-all ${open ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-muted-foreground/40"}`}
-        >
-          {selected ? (
-            <span className="flex items-center gap-2">
-              {selected.color && <span className={`size-2 rounded-full ${selected.color}`} />}
-              <span className="font-medium text-foreground">{selected.label}</span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder ?? `Select ${label.toLowerCase()}`}</span>
-          )}
-        </button>
-        <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+    const validItems = items.filter((i) => i.item_code && i.qty > 0);
+    if (validItems.length === 0) {
+      setErrorMsg("Please specify at least one valid item to transfer.");
+      return;
+    }
 
-        {open && (
-          <div className="absolute z-50 top-full mt-1.5 w-full rounded-xl border border-border bg-card shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 origin-top">
-            {options.map((o) => (
-              <button
-                key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-left hover:bg-muted transition-colors ${value === o.value ? "bg-primary/5 text-primary font-semibold" : "text-foreground"}`}
-              >
-                {o.color && <span className={`size-2 rounded-full shrink-0 ${o.color}`} />}
-                <div className="min-w-0">
-                   <p className="leading-none">{o.label}</p>
-                   {o.sub && <p className="text-[10px] text-muted-foreground mt-1">{o.sub}</p>}
-                </div>
-                {value === o.value && <Check className="ml-auto size-3.5 text-primary" />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+    setSubmitting(true);
+    try {
+      const payload = {
+        stock_entry_type: "Material Transfer",
+        purpose: "Material Transfer",
+        posting_date: postingDate,
+        from_warehouse: fromWarehouse,
+        to_warehouse: toWarehouse,
+        remarks: remarks,
+        items: validItems.map((i) => ({
+          s_warehouse: fromWarehouse,
+          t_warehouse: toWarehouse,
+          item_code: i.item_code,
+          qty: Number(i.qty),
+          uom: i.uom,
+        })),
+      };
 
-// ── Text Input ────────────────────────────────────────────────────────────────
+      const res = await fetch("/api/resource/Stock%20Entry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
-function Field({
-  label, id, type = "text", placeholder, required, icon: Icon, value, onChange
-}: {
-  label: string; id: string; type?: string; placeholder?: string; required?: boolean; icon?: any; value?: string; onChange?: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="text-[11px] font-semibold text-muted-foreground block">
-        {label} {required && <span className="text-primary">*</span>}
-      </label>
-      <div className="relative">
-        {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />}
-        <input
-          id={id} type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)}
-          className={`w-full h-9 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${Icon ? "pl-9 pr-4" : "px-4"}`}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Step config ───────────────────────────────────────────────────────────────
-
-const steps = [
-  { n: 1, label: "Routing",     icon: ArrowLeftRight, desc: "Source & destination" },
-  { n: 2, label: "Line Items",  icon: Box,            desc: "SKUs & move quantities" },
-  { n: 3, label: "Authorization", icon: Shield,        desc: "Approval & waybill" },
-];
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-export default function NewStockTransferPage() {
-  const [step, setStep] = useState(1);
-  const [source, setSource] = useState("");
-  const [target, setTarget] = useState("");
-  const [refNo, setRefNo] = useState("");
-  const [items, setItems] = useState([{ id: Date.now(), sku: "", qty: 1, current: 50 }]);
-
-  const addItem = () => setItems([...items, { id: Date.now(), sku: "", qty: 1, current: 50 }]);
-  const removeItem = (id: number) => setItems(items.filter(i => i.id !== id));
-  const updateItem = (id: number, field: string, val: any) => {
-    setItems(items.map(i => i.id === id ? { ...i, [field]: val } : i));
+      if (res.ok) {
+        setSuccessMsg("Stock Transfer voucher created successfully!");
+        setTimeout(() => {
+          router.push(`/warehouse/${encodeURIComponent(toWarehouse)}`);
+        }, 800);
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setErrorMsg(json.message || "Failed to submit Stock Transfer to Frappe.");
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to reach server.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-
-      {/* Back Link */}
-      <Link href="/warehouse">
-        <button className="flex items-center gap-1.5 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors mb-5 uppercase tracking-[0.15em]">
-          <ChevronLeft className="size-3.5" /> Back to warehouse
-        </button>
-      </Link>
-
-      <div className="grid lg:grid-cols-[260px_1fr] gap-6 items-start">
-
-        {/* Left Sidebar */}
-        <div className="flex flex-col gap-3">
-          <div className="relative rounded-2xl border border-border bg-card p-6 overflow-hidden">
-            <div className="absolute -top-8 -right-8 size-28 bg-primary/10 blur-2xl rounded-full" />
-            <div className="relative z-10">
-              <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-                <ArrowLeftRight className="size-5" />
-              </div>
-              <p className="text-[11px] font-bold text-primary uppercase tracking-[0.2em] mb-1">Stock Movement</p>
-              <h1 className="text-xl font-black text-foreground tracking-tight leading-tight mb-2">New stock transfer</h1>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Move inventory between branch warehouses or serving points.
-              </p>
-            </div>
+    <form onSubmit={handleSubmit} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      {errorMsg && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3 text-xs">
+          <AlertCircle className="size-4 text-rose-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Stock Entry Error</p>
+            <p className="font-medium">{errorMsg}</p>
           </div>
+        </div>
+      )}
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            {steps.map((s, i) => {
-              const done = step > s.n; const active = step === s.n;
-              return (
-                <button key={s.n} onClick={() => setStep(s.n)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all ${i < steps.length - 1 ? "border-b border-border" : ""} ${active ? "bg-primary/5" : "hover:bg-muted/50"}`}>
-                  <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 transition-all font-bold text-[11px]
-                    ${done ? "bg-emerald-500 text-white" : active ? "bg-primary text-primary-foreground shadow-md shadow-primary/25" : "bg-muted text-muted-foreground"}`}>
-                    {done ? <Check className="size-4" /> : <s.icon className="size-4" />}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-[12px] font-bold leading-none mb-0.5 ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</p>
-                    <p className="text-[10px] text-muted-foreground leading-none">{s.desc}</p>
-                  </div>
-                  {active && <div className="ml-auto size-1.5 rounded-full bg-primary" />}
-                </button>
-              );
-            })}
-          </div>
+      {successMsg && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-3 text-xs font-bold">
+          <Check className="size-4 text-emerald-600 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
 
-          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="size-3.5 text-primary" />
-              <p className="text-[11px] font-bold text-primary">Logistics tip</p>
-            </div>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-               {step === 1 && "Transferring between branches? Ensure the destination warehouse is active and has sufficient storage capacity."}
-               {step === 2 && "The 'Current Stock' shown is the real-time balance at the source location."}
-               {step === 3 && "Waybills must be signed by both dispatching and receiving warehouse clerks."}
-            </p>
+      <div className="grid sm:grid-cols-2 gap-3.5">
+        {/* Source Warehouse */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700">
+            Source Warehouse (From) <span className="text-rose-500">*</span>
+          </label>
+          <Select value={fromWarehouse} onValueChange={setFromWarehouse}>
+            <SelectTrigger className="w-full h-9 text-xs font-semibold">
+              <SelectValue placeholder="Select Source Warehouse" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              {warehousesList.map((w) => (
+                <SelectItem key={w.name} value={w.name} className="text-xs">
+                  {w.warehouse_name || w.name} ({w.name})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Target Warehouse */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700">
+            Target Warehouse (To) <span className="text-rose-500">*</span>
+          </label>
+          <Select value={toWarehouse} onValueChange={setToWarehouse}>
+            <SelectTrigger className="w-full h-9 text-xs font-semibold">
+              <SelectValue placeholder="Select Target Warehouse" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              {warehousesList.map((w) => (
+                <SelectItem key={w.name} value={w.name} className="text-xs">
+                  {w.warehouse_name || w.name} ({w.name})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Posting Date */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700">
+            Posting Date
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+            <Input
+              type="date"
+              value={postingDate}
+              onChange={(e) => setPostingDate(e.target.value)}
+              className="h-9 pl-9 text-xs font-semibold"
+            />
           </div>
         </div>
 
-        {/* Right Panel */}
-        <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                {step === 1 && <ArrowLeftRight className="size-4" />}
-                {step === 2 && <Box className="size-4" />}
-                {step === 3 && <Shield className="size-4" />}
-              </div>
-              <div>
-                <p className="text-sm font-black text-foreground leading-none">
-                  {step === 1 && "Route configuration"}
-                  {step === 2 && "Move line items"}
-                  {step === 3 && "Generate waybill"}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Step {step} of {steps.length}</p>
-              </div>
-              <div className="ml-auto flex gap-1">
-                {steps.map((s) => (
-                  <div key={s.n} className={`h-1 rounded-full transition-all duration-300 ${s.n <= step ? "bg-primary" : "bg-muted"} ${s.n === step ? "w-8" : "w-3"}`} />
-                ))}
-              </div>
-            </div>
-
-            <div className="h-px bg-border mb-5" />
-
-            {/* Step 1: Routing */}
-            {step === 1 && (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <CustomSelect id="source" label="Source Warehouse" value={source} onChange={setSource} required options={[
-                  { value: "main", label: "Main Kitchen Stores", color: "bg-emerald-500" },
-                  { value: "cold", label: "Cold Room Alpha", color: "bg-blue-500" },
-                ]} />
-                <CustomSelect id="target" label="Target Warehouse" value={target} onChange={setTarget} required options={[
-                  { value: "p1", label: "Serving Point 1 (Main)" },
-                  { value: "p2", label: "Serving Point 2 (Exec)" },
-                ]} />
-                <div className="sm:col-span-2">
-                   <Field id="remarks" label="Transfer Reason / Remarks" placeholder="e.g. Daily replenishment for serving point 1" value={refNo} onChange={setRefNo} required icon={FileText} />
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Line Items */}
-            {step === 2 && (
-              <div className="space-y-4">
-                 <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Transfer items</p>
-                    <Button onClick={addItem} variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-primary gap-1.5 hover:bg-primary/5">
-                       <Plus className="size-3" /> Add item
-                    </Button>
-                 </div>
-                 <div className="space-y-3">
-                    {items.map((item, idx) => (
-                       <div key={item.id} className="grid grid-cols-[1fr_100px_100px_40px] gap-3 items-end p-3 rounded-xl bg-muted/30 border border-border/50 animate-in slide-in-from-right-2 duration-200">
-                          <div className="space-y-1.5">
-                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">SKU / Item</label>
-                             <CustomSelect id={`sku-${item.id}`} label="" value={item.sku} onChange={(v) => updateItem(item.id, 'sku', v)} placeholder="Select SKU..." options={[
-                                { value: "rice", label: "Rice (Basmati) 50kg" },
-                                { value: "beef", label: "Beef Cuts (Prime)" },
-                             ]} />
-                          </div>
-                          <div className="space-y-1.5 text-center">
-                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current</label>
-                             <div className="w-full h-8 flex items-center justify-center rounded-lg border border-border bg-muted/20 text-[11px] font-bold text-muted-foreground uppercase">
-                                {item.current} Units
-                             </div>
-                          </div>
-                          <div className="space-y-1.5 text-center">
-                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Move</label>
-                             <input type="number" value={item.qty} onChange={e => updateItem(item.id, 'qty', e.target.value)} className="w-full h-8 text-center rounded-lg border border-border bg-card text-[12px] outline-none" />
-                          </div>
-                          <button onClick={() => removeItem(item.id)} className="h-8 flex items-center justify-center text-muted-foreground hover:text-rose-500 transition-colors">
-                             <Trash2 className="size-3.5" />
-                          </button>
-                       </div>
-                    ))}
-                 </div>
-              </div>
-            )}
-
-            {/* Step 3: Authorization */}
-            {step === 3 && (
-              <div className="space-y-5">
-                 <div className="p-5 rounded-2xl border border-border bg-muted/20 text-center">
-                    <ArrowLeftRight className="size-8 text-primary mx-auto mb-3" />
-                    <p className="text-sm font-black text-foreground tracking-tight">Generate Digital Waybill</p>
-                    <p className="text-[11px] text-muted-foreground mt-1 max-w-[300px] mx-auto">
-                       A transfer waybill will be generated for the receiving staff to sign upon physical arrival of the goods.
-                    </p>
-                 </div>
-                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
-                  <div className="size-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Shield className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-[12px] font-bold text-foreground mb-0.5">Inventory Safety</p>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                       Stock balances will be held in a <strong className="text-foreground uppercase">transit account</strong> until the receiving warehouse confirms the delivery.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <button onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1} className="h-8 px-4 rounded-xl border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40 transition-all">← Previous</button>
-            <div className="flex gap-2">
-              <button className="h-8 px-4 rounded-xl border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:bg-muted transition-all">Save draft</button>
-              {step < 3 ? (
-                <button onClick={() => setStep(step + 1)} className="h-8 px-5 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold hover:bg-primary/90 shadow-md transition-all">Continue →</button>
-              ) : (
-                <button className="h-8 px-5 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold hover:bg-primary/90 shadow-md transition-all flex items-center gap-1.5">
-                  <Save className="size-3.5" /> Execute transfer
-                </button>
-              )}
-            </div>
-          </div>
+        {/* Remarks */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700">
+            Transfer Reason / Reference
+          </label>
+          <Input
+            type="text"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            placeholder="e.g. Stock replenishment for Cold Storage"
+            className="h-9 text-xs font-medium"
+          />
         </div>
       </div>
+
+      {/* ── Items to Transfer Table ──────────────────────────────────────── */}
+      <div className="space-y-2 pt-2 border-t border-slate-100">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+            Transferred Items & Quantities
+          </h3>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleAddItem}
+            className="h-7 text-xs font-bold gap-1 border-slate-200"
+          >
+            <Plus className="size-3" /> Add Item
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          {items.map((row, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80"
+            >
+              {/* Item Select */}
+              <div className="flex-1">
+                <Select
+                  value={row.item_code}
+                  onValueChange={(val) => handleItemCodeChange(idx, val)}
+                >
+                  <SelectTrigger className="w-full h-8 text-xs bg-white">
+                    <SelectValue placeholder="Select Item to Transfer" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {itemsList.map((item) => (
+                      <SelectItem key={item.name} value={item.name} className="text-xs">
+                        {item.item_name || item.name} ({item.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Quantity */}
+              <div className="w-24">
+                <Input
+                  type="number"
+                  min="0.1"
+                  step="any"
+                  value={row.qty}
+                  onChange={(e) => handleQtyChange(idx, parseFloat(e.target.value) || 0)}
+                  className="h-8 text-xs font-bold text-center bg-white"
+                />
+              </div>
+
+              {/* UOM */}
+              <div className="w-20">
+                <Input
+                  type="text"
+                  value={row.uom}
+                  disabled
+                  className="h-8 text-xs font-semibold text-center bg-slate-100 opacity-80"
+                />
+              </div>
+
+              {/* Remove Row */}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => handleRemoveItem(idx)}
+                disabled={items.length <= 1}
+                className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+        <Link href="/warehouse">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 text-xs font-bold border-slate-200 text-slate-700"
+          >
+            Cancel
+          </Button>
+        </Link>
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="h-9 px-5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-md shadow-amber-600/20 cursor-pointer"
+        >
+          <Save className="size-3.5 mr-1" />
+          <span>{submitting ? "Posting Transfer…" : "Submit Stock Transfer"}</span>
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export default function NewStockTransferPage() {
+  return (
+    <div className="space-y-4 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* ── Breadcrumb Bar ────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 px-4 rounded-xl border border-slate-200 shadow-sm">
+        <nav className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
+          <Link href="/overview" className="hover:text-emerald-700 font-medium flex items-center gap-1">
+            <Home className="size-3.5 text-slate-400" />
+            <span>Dashboard</span>
+          </Link>
+          <ChevronRight className="size-3 text-slate-400" />
+          <Link href="/warehouse" className="hover:text-emerald-700 font-medium">
+            Warehouses
+          </Link>
+          <ChevronRight className="size-3 text-slate-400" />
+          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
+            New Stock Transfer
+          </span>
+        </nav>
+
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
+          <ArrowLeftRight className="size-3 text-amber-600" /> Material Transfer
+        </span>
+      </div>
+
+      <Suspense fallback={<div className="p-8 text-center text-xs font-bold text-slate-500">Loading transfer form…</div>}>
+        <StockTransferForm />
+      </Suspense>
     </div>
   );
 }

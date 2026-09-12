@@ -1,0 +1,97 @@
+ID,Account Name,Company,Parent Account,Created On,Created By,Disable,Account Number,Is Group,Root Type,Report Type,Currency,Account Category,Account Type,Tax Rate,Frozen,Balance must be,Include in gross
+"""1000 - Application of Funds (Assets) - CCL""",Application of Funds (Assets),CROWN CANTEEN LIMITED,,54:00.7,Administrator,0,1000,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1100-1600 - Current Assets - CCL""",Current Assets,CROWN CANTEEN LIMITED,1000 - Application of Funds (Assets) - CCL,54:00.7,Administrator,0,1100-1600,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1100 - Cash In Hand - CCL""",Cash In Hand,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1100,1,Asset,Balance Sheet,KES,Cash and Cash Equivalents,Cash,0,No,,0
+"""1110 - Cash - CCL""",Cash,CROWN CANTEEN LIMITED,1100 - Cash In Hand - CCL,54:00.8,Administrator,0,1110,0,Asset,Balance Sheet,KES,Cash and Cash Equivalents,Cash,0,No,,0
+"""1200 - Bank Accounts - CCL""",Bank Accounts,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.7,Administrator,0,1200,1,Asset,Balance Sheet,KES,Cash and Cash Equivalents,Bank,0,No,,0
+"""1300 - Accounts Receivable - CCL""",Accounts Receivable,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.7,Administrator,0,1300,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1310 - Debtors - CCL""",Debtors,CROWN CANTEEN LIMITED,1300 - Accounts Receivable - CCL,54:00.7,Administrator,0,1310,0,Asset,Balance Sheet,KES,Trade Receivables,Receivable,0,No,,0
+"""1400 - Stock Assets - CCL""",Stock Assets,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1400,1,Asset,Balance Sheet,KES,Stock Assets,Stock,0,No,,0
+"""1410 - Stock In Hand - CCL""",Stock In Hand,CROWN CANTEEN LIMITED,1400 - Stock Assets - CCL,54:00.8,Administrator,0,1410,0,Asset,Balance Sheet,KES,Stock Assets,Stock,0,No,,0
+"""1500 - Tax Assets - CCL""",Tax Assets,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1500,1,Asset,Balance Sheet,KES,Other Current Assets,,0,No,,0
+"""1600 - Loans and Advances (Assets) - CCL""",Loans and Advances (Assets),CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1600,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1610 - Employee Advances - CCL""",Employee Advances,CROWN CANTEEN LIMITED,1600 - Loans and Advances (Assets) - CCL,54:00.8,Administrator,0,1610,0,Asset,Balance Sheet,KES,Other Receivables,Payable,0,No,,0
+"""1650 - Securities and Deposits - CCL""",Securities and Deposits,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1650,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1651 - Earnest Money - CCL""",Earnest Money,CROWN CANTEEN LIMITED,1650 - Securities and Deposits - CCL,54:00.8,Administrator,0,1651,0,Asset,Balance Sheet,KES,Other Current Assets,,0,No,,0
+"""1660 - Prepaid Expenses - CCL""",Prepaid Expenses,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1660,0,Asset,Balance Sheet,KES,Other Current Assets,,0,No,,0
+"""1670 - Short-term Investments - CCL""",Short-term Investments,CROWN CANTEEN LIMITED,1100-1600 - Current Assets - CCL,54:00.8,Administrator,0,1670,0,Asset,Balance Sheet,KES,Short-term Investments,,0,No,,0
+"""1700 - Fixed Assets - CCL""",Fixed Assets,CROWN CANTEEN LIMITED,1000 - Application of Funds (Assets) - CCL,54:00.8,Administrator,0,1700,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1710 - Capital Equipment - CCL""",Capital Equipment,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1710,0,Asset,Balance Sheet,KES,Tangible Assets,Fixed Asset,0,No,,0
+"""1720 - Electronic Equipment - CCL""",Electronic Equipment,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1720,0,Asset,Balance Sheet,KES,Tangible Assets,Fixed Asset,0,No,,0
+"""1730 - Furniture and Fixtures - CCL""",Furniture and Fixtures,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1730,0,Asset,Balance Sheet,KES,Tangible Assets,Fixed Asset,0,No,,0
+"""1740 - Office Equipment - CCL""",Office Equipment,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1740,0,Asset,Balance Sheet,KES,Tangible Assets,Fixed Asset,0,No,,0
+"""1750 - Plants and Machineries - CCL""",Plants and Machineries,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1750,0,Asset,Balance Sheet,KES,Tangible Assets,Fixed Asset,0,No,,0
+"""1760 - Buildings - CCL""",Buildings,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1760,0,Asset,Balance Sheet,KES,Tangible Assets,Fixed Asset,0,No,,0
+"""1770 - Software - CCL""",Software,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1770,0,Asset,Balance Sheet,KES,Intangible Assets,Fixed Asset,0,No,,0
+"""1780 - Accumulated Depreciation - CCL""",Accumulated Depreciation,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1780,0,Asset,Balance Sheet,KES,Tangible Assets,Accumulated Depreciation,0,No,,0
+"""1790 - CWIP Account - CCL""",CWIP Account,CROWN CANTEEN LIMITED,1700 - Fixed Assets - CCL,54:00.8,Administrator,0,1790,0,Asset,Balance Sheet,KES,Tangible Assets,Capital Work in Progress,0,No,,0
+"""1800 - Investments - CCL""",Investments,CROWN CANTEEN LIMITED,1000 - Application of Funds (Assets) - CCL,54:00.8,Administrator,0,1800,1,Asset,Balance Sheet,KES,Long-term Investments,,0,No,,0
+"""1900 - Temporary Accounts - CCL""",Temporary Accounts,CROWN CANTEEN LIMITED,1000 - Application of Funds (Assets) - CCL,54:00.8,Administrator,0,1900,1,Asset,Balance Sheet,KES,,,0,No,,0
+"""1910 - Temporary Opening - CCL""",Temporary Opening,CROWN CANTEEN LIMITED,1900 - Temporary Accounts - CCL,54:00.8,Administrator,0,1910,0,Asset,Balance Sheet,KES,Other Non-current Assets,Temporary,0,No,,0
+"""2000 - Source of Funds (Liabilities) - CCL""",Source of Funds (Liabilities),CROWN CANTEEN LIMITED,,54:01.0,Administrator,0,2000,1,Liability,Balance Sheet,KES,,,0,No,,0
+"""2100-2400 - Current Liabilities - CCL""",Current Liabilities,CROWN CANTEEN LIMITED,2000 - Source of Funds (Liabilities) - CCL,54:01.0,Administrator,0,2100-2400,1,Liability,Balance Sheet,KES,,,0,No,,0
+"""2100 - Accounts Payable - CCL""",Accounts Payable,CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2100,1,Liability,Balance Sheet,KES,,,0,No,,0
+"""2110 - Creditors - CCL""",Creditors,CROWN CANTEEN LIMITED,2100 - Accounts Payable - CCL,54:01.0,Administrator,0,2110,0,Liability,Balance Sheet,KES,Trade Payables,Payable,0,No,,0
+"""2120 - Payroll Payable - CCL""",Payroll Payable,CROWN CANTEEN LIMITED,2100 - Accounts Payable - CCL,54:01.0,Administrator,0,2120,0,Liability,Balance Sheet,KES,Other Payables,,0,No,,0
+"""2150 - Accrued Expenses - CCL""",Accrued Expenses,CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2150,0,Liability,Balance Sheet,KES,Other Current Liabilities,,0,No,,0
+"""2160 - Customer Advances - CCL""",Customer Advances,CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2160,0,Liability,Balance Sheet,KES,Other Current Liabilities,,0,No,,0
+"""2200 - Stock Liabilities - CCL""",Stock Liabilities,CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2200,1,Liability,Balance Sheet,KES,,,0,No,,0
+"""2210 - Stock Received But Not Billed - CCL""",Stock Received But Not Billed,CROWN CANTEEN LIMITED,2200 - Stock Liabilities - CCL,54:01.0,Administrator,0,2210,0,Liability,Balance Sheet,KES,Trade Payables,Stock Received But Not Billed,0,No,,0
+"""2211 - Asset Received But Not Billed - CCL""",Asset Received But Not Billed,CROWN CANTEEN LIMITED,2200 - Stock Liabilities - CCL,54:01.0,Administrator,0,2211,0,Liability,Balance Sheet,KES,Trade Payables,Asset Received But Not Billed,0,No,,0
+"""2300 - Duties and Taxes - CCL""",Duties and Taxes,CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2300,1,Liability,Balance Sheet,KES,Current Tax Liabilities,Tax,0,No,,0
+"""2310 - TDS Payable - CCL""",TDS Payable,CROWN CANTEEN LIMITED,2300 - Duties and Taxes - CCL,54:01.0,Administrator,0,2310,0,Liability,Balance Sheet,KES,Current Tax Liabilities,,0,No,,0
+"""VAT - CCL""",VAT,CROWN CANTEEN LIMITED,2300 - Duties and Taxes - CCL,54:01.3,Administrator,0,,0,Liability,Balance Sheet,,,Tax,16,No,,0
+"""2350 - Short-term Provisions - CCL""",Short-term Provisions,CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2350,0,Liability,Balance Sheet,KES,Short-term Provisions,,0,No,,0
+"""2400 - Loans (Liabilities) - CCL""",Loans (Liabilities),CROWN CANTEEN LIMITED,2100-2400 - Current Liabilities - CCL,54:01.0,Administrator,0,2400,1,Liability,Balance Sheet,KES,,,0,No,,0
+"""2410 - Secured Loans - CCL""",Secured Loans,CROWN CANTEEN LIMITED,2400 - Loans (Liabilities) - CCL,54:01.0,Administrator,0,2410,0,Liability,Balance Sheet,KES,Long-term Borrowings,,0,No,,0
+"""2420 - Unsecured Loans - CCL""",Unsecured Loans,CROWN CANTEEN LIMITED,2400 - Loans (Liabilities) - CCL,54:01.0,Administrator,0,2420,0,Liability,Balance Sheet,KES,Long-term Borrowings,,0,No,,0
+"""2430 - Bank Overdraft Account - CCL""",Bank Overdraft Account,CROWN CANTEEN LIMITED,2400 - Loans (Liabilities) - CCL,54:01.0,Administrator,0,2430,0,Liability,Balance Sheet,KES,Short-term Borrowings,,0,No,,0
+"""2500 - Non-Current Liabilities - CCL""",Non-Current Liabilities,CROWN CANTEEN LIMITED,2000 - Source of Funds (Liabilities) - CCL,54:01.1,Administrator,0,2500,1,Liability,Balance Sheet,KES,,,0,No,,0
+"""2510 - Long-term Provisions - CCL""",Long-term Provisions,CROWN CANTEEN LIMITED,2500 - Non-Current Liabilities - CCL,54:01.1,Administrator,0,2510,0,Liability,Balance Sheet,KES,Long-term Provisions,,0,No,,0
+"""2520 - Employee Benefits Obligation - CCL""",Employee Benefits Obligation,CROWN CANTEEN LIMITED,2500 - Non-Current Liabilities - CCL,54:01.1,Administrator,0,2520,0,Liability,Balance Sheet,KES,Other Non-current Liabilities,,0,No,,0
+"""3000 - Equity - CCL""",Equity,CROWN CANTEEN LIMITED,,54:01.1,Administrator,0,3000,1,Equity,Balance Sheet,KES,,,0,No,,0
+"""3100 - Capital Stock - CCL""",Capital Stock,CROWN CANTEEN LIMITED,3000 - Equity - CCL,54:01.1,Administrator,0,3100,0,Equity,Balance Sheet,KES,Share Capital,Equity,0,No,,0
+"""3200 - Dividends Paid - CCL""",Dividends Paid,CROWN CANTEEN LIMITED,3000 - Equity - CCL,54:01.1,Administrator,0,3200,0,Equity,Balance Sheet,KES,Reserves and Surplus,Equity,0,No,,0
+"""3300 - Opening Balance Equity - CCL""",Opening Balance Equity,CROWN CANTEEN LIMITED,3000 - Equity - CCL,54:01.1,Administrator,0,3300,0,Equity,Balance Sheet,KES,Reserves and Surplus,Equity,0,No,,0
+"""3400 - Retained Earnings - CCL""",Retained Earnings,CROWN CANTEEN LIMITED,3000 - Equity - CCL,54:01.1,Administrator,0,3400,0,Equity,Balance Sheet,KES,Reserves and Surplus,Equity,0,No,,0
+"""3500 - Revaluation Surplus - CCL""",Revaluation Surplus,CROWN CANTEEN LIMITED,3000 - Equity - CCL,54:01.1,Administrator,0,3500,0,Equity,Balance Sheet,KES,Reserves and Surplus,Equity,0,No,,0
+"""4000 - Income - CCL""",Income,CROWN CANTEEN LIMITED,,54:01.0,Administrator,0,4000,1,Income,Profit and Loss,KES,,,0,No,,0
+"""4100 - Direct Income - CCL""",Direct Income,CROWN CANTEEN LIMITED,4000 - Income - CCL,54:01.0,Administrator,0,4100,1,Income,Profit and Loss,KES,,,0,No,,0
+"""4110 - Sales - CCL""",Sales,CROWN CANTEEN LIMITED,4100 - Direct Income - CCL,54:01.0,Administrator,0,4110,0,Income,Profit and Loss,KES,Revenue from Operations,,0,No,,0
+"""4120 - Service - CCL""",Service,CROWN CANTEEN LIMITED,4100 - Direct Income - CCL,54:01.0,Administrator,0,4120,0,Income,Profit and Loss,KES,Revenue from Operations,,0,No,,0
+"""4200 - Indirect Income - CCL""",Indirect Income,CROWN CANTEEN LIMITED,4000 - Income - CCL,54:01.0,Administrator,0,4200,1,Income,Profit and Loss,KES,,,0,No,,0
+"""4210 - Interest Income - CCL""",Interest Income,CROWN CANTEEN LIMITED,4200 - Indirect Income - CCL,54:01.0,Administrator,0,4210,0,Income,Profit and Loss,KES,Investment Income,,0,No,,0
+"""4220 - Interest on Fixed Deposits - CCL""",Interest on Fixed Deposits,CROWN CANTEEN LIMITED,4200 - Indirect Income - CCL,54:01.0,Administrator,0,4220,0,Income,Profit and Loss,KES,Investment Income,,0,No,,0
+"""5000 - Expenses - CCL""",Expenses,CROWN CANTEEN LIMITED,,54:00.8,Administrator,0,5000,1,Expense,Profit and Loss,KES,,,0,No,,0
+"""5100 - Direct Expenses - CCL""",Direct Expenses,CROWN CANTEEN LIMITED,5000 - Expenses - CCL,54:00.8,Administrator,0,5100,1,Expense,Profit and Loss,KES,,,0,No,,0
+"""5110 - Stock Expenses - CCL""",Stock Expenses,CROWN CANTEEN LIMITED,5100 - Direct Expenses - CCL,54:00.8,Administrator,0,5110,1,Expense,Profit and Loss,KES,,,0,No,,0
+"""5111 - Cost of Goods Sold - CCL""",Cost of Goods Sold,CROWN CANTEEN LIMITED,5110 - Stock Expenses - CCL,54:00.9,Administrator,0,5111,0,Expense,Profit and Loss,KES,Cost of Goods Sold,Cost of Goods Sold,0,No,,0
+"""5112 - Expenses Included In Asset Valuation - CCL""",Expenses Included In Asset Valuation,CROWN CANTEEN LIMITED,5110 - Stock Expenses - CCL,54:00.9,Administrator,0,5112,0,Expense,Profit and Loss,KES,Other Direct Costs,Expenses Included In Asset Valuation,0,No,,0
+"""5118 - Expenses Included In Valuation - CCL""",Expenses Included In Valuation,CROWN CANTEEN LIMITED,5110 - Stock Expenses - CCL,54:00.9,Administrator,0,5118,0,Expense,Profit and Loss,KES,Other Direct Costs,Expenses Included In Valuation,0,No,,0
+"""5119 - Stock Adjustment - CCL""",Stock Adjustment,CROWN CANTEEN LIMITED,5110 - Stock Expenses - CCL,54:00.9,Administrator,0,5119,0,Expense,Profit and Loss,KES,Other Direct Costs,Stock Adjustment,0,No,,0
+"""5200 - Indirect Expenses - CCL""",Indirect Expenses,CROWN CANTEEN LIMITED,5000 - Expenses - CCL,54:00.9,Administrator,0,5200,1,Expense,Profit and Loss,KES,,,0,No,,0
+"""5201 - Administrative Expenses - CCL""",Administrative Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5201,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5202 - Commission on Sales - CCL""",Commission on Sales,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5202,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5203 - Depreciation - CCL""",Depreciation,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5203,0,Expense,Profit and Loss,KES,Operating Expenses,Depreciation,0,No,,0
+"""5204 - Entertainment Expenses - CCL""",Entertainment Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5204,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5205 - Freight and Forwarding Charges - CCL""",Freight and Forwarding Charges,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5205,0,Expense,Profit and Loss,KES,Operating Expenses,Chargeable,0,No,,0
+"""5206 - Legal Expenses - CCL""",Legal Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5206,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5207 - Marketing Expenses - CCL""",Marketing Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5207,0,Expense,Profit and Loss,KES,Operating Expenses,Chargeable,0,No,,0
+"""5208 - Office Maintenance Expenses - CCL""",Office Maintenance Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5208,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5209 - Office Rent - CCL""",Office Rent,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5209,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5210 - Postal Expenses - CCL""",Postal Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5210,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5211 - Print and Stationery - CCL""",Print and Stationery,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5211,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5212 - Round Off - CCL""",Round Off,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5212,0,Expense,Profit and Loss,KES,Operating Expenses,Round Off,0,No,,0
+"""5213 - Salary - CCL""",Salary,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5213,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5214 - Sales Expenses - CCL""",Sales Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5214,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5215 - Telephone Expenses - CCL""",Telephone Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5215,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5216 - Travel Expenses - CCL""",Travel Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5216,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5217 - Utility Expenses - CCL""",Utility Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5217,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5218 - Write Off - CCL""",Write Off,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5218,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5219 - Exchange Gain/Loss - CCL""",Exchange Gain/Loss,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5219,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5220 - Interest Expense - CCL""",Interest Expense,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5220,0,Expense,Profit and Loss,KES,Finance Costs,,0,No,,0
+"""5221 - Bank Charges - CCL""",Bank Charges,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5221,0,Expense,Profit and Loss,KES,Finance Costs,,0,No,,0
+"""5222 - Gain/Loss on Asset Disposal - CCL""",Gain/Loss on Asset Disposal,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5222,0,Expense,Profit and Loss,KES,Other Operating Income,,0,No,,0
+"""5223 - Miscellaneous Expenses - CCL""",Miscellaneous Expenses,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5223,0,Expense,Profit and Loss,KES,Operating Expenses,Chargeable,0,No,,0
+"""5224 - Impairment - CCL""",Impairment,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:00.9,Administrator,0,5224,0,Expense,Profit and Loss,KES,Operating Expenses,,0,No,,0
+"""5225 - Tax Expense - CCL""",Tax Expense,CROWN CANTEEN LIMITED,5200 - Indirect Expenses - CCL,54:01.0,Administrator,0,5225,0,Expense,Profit and Loss,KES,Tax Expense,,0,No,,0
